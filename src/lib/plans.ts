@@ -1,6 +1,7 @@
 import type { PlanSnapshot } from './types'
 
-const TTL_MS = 5 * 60 * 1000
+/** Plan snapshots expire after this interval (confirm-within window). */
+export const TTL_MS = 5 * 60 * 1000
 
 export async function savePlan(plan: PlanSnapshot): Promise<void> {
   const { writeFile, mkdir } = await import('fs/promises')
