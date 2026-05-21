@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { setJob, setMeta } from '@/lib/jobs'
 import { initJobDir } from '@/lib/output-store'
 import { loadPlan } from '@/lib/plans'
+import { submitComfyTask } from '@/lib/runninghub-comfy'
 import { submitTask } from '@/lib/runninghub'
 import type { RunMetadata } from '@/lib/types'
 
@@ -25,17 +26,24 @@ export async function POST(req: Request) {
       )
     }
 
-    const result = await submitTask(plan.route, plan.params)
+    let taskId: string
 
-    if (result.errorMessage || !result.taskId) {
-      return NextResponse.json(
-        { error: result.errorMessage ?? 'submit failed' },
-        { status: 502 }
-      )
+    if (plan.mode === 'comfy' && plan.workflowId && plan.nodeInfoList) {
+      const comfy = await submitComfyTask(plan.workflowId, plan.nodeInfoList)
+      taskId = comfy.taskId
+    } else {
+      const result = await submitTask(plan.route, plan.params)
+      if (result.errorMessage || !result.taskId) {
+        return NextResponse.json(
+          { error: result.errorMessage ?? 'submit failed' },
+          { status: 502 }
+        )
+      }
+      taskId = result.taskId
     }
 
     const jobId = randomUUID()
-    const outputDir = await initJobDir(jobId, plan, result.taskId)
+    const outputDir = await initJobDir(jobId, plan, taskId)
     const metaRaw = await readFile(
       path.join(outputDir, 'metadata.json'),
       'utf-8'
@@ -45,7 +53,7 @@ export async function POST(req: Request) {
     setJob({
       jobId,
       planId: plan.planId,
-      taskId: result.taskId,
+      taskId,
       status: 'RUNNING',
       createdAt: new Date().toISOString(),
       outputDir,
@@ -54,7 +62,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       jobId,
-      taskId: result.taskId,
+      taskId,
       status: 'RUNNING' as const,
     })
   } catch (e) {

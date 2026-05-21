@@ -7,6 +7,7 @@ import {
   setJob,
 } from '@/lib/jobs'
 import { finalizeFailed, finalizeSuccess } from '@/lib/output-store'
+import { queryComfyOutputs } from '@/lib/runninghub-comfy'
 import { queryTask, type QueryResponse } from '@/lib/runninghub'
 
 export const maxDuration = 120
@@ -82,8 +83,6 @@ export async function GET(req: Request) {
     job.pollCount = pollCount + 1
     setJob(job)
 
-    const q = await queryTask(job.taskId)
-
     const mFinal = meta
     if (!mFinal) {
       return NextResponse.json(
@@ -91,6 +90,46 @@ export async function GET(req: Request) {
         { status: 500 }
       )
     }
+
+    const isComfy = mFinal.apiMode === 'comfy'
+
+    if (isComfy) {
+      const comfy = await queryComfyOutputs(job.taskId)
+
+      if (comfy.status === 'FAILED') {
+        await finalizeFailed(
+          job.outputDir,
+          mFinal,
+          comfy.errorMessage ?? 'ComfyUI task failed'
+        )
+        job.status = 'FAILED'
+        job.errorMessage = comfy.errorMessage ?? 'task failed'
+        setJob(job)
+        return NextResponse.json({
+          status: 'FAILED' as const,
+          errorMessage: job.errorMessage,
+        })
+      }
+
+      if (comfy.status === 'SUCCESS' && comfy.fileUrl) {
+        await finalizeSuccess(job.outputDir, mFinal, comfy.fileUrl, comfy.raw ?? undefined)
+        job.status = 'SUCCESS'
+        job.errorMessage = undefined
+        setJob(job)
+        return NextResponse.json({
+          status: 'SUCCESS' as const,
+          imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+          outputPath: job.outputDir,
+        })
+      }
+
+      return NextResponse.json({
+        status: 'RUNNING' as const,
+        progress: Math.min(95, Math.round(((pollCount + 1) / MAX_POLLS) * 100)),
+      })
+    }
+
+    const q = await queryTask(job.taskId)
 
     if (isTerminalFailure(q)) {
       await finalizeFailed(

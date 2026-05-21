@@ -20,6 +20,7 @@ export async function initJobDir(
     jobId,
     taskId,
     createdAt: new Date().toISOString(),
+    apiMode: plan.mode ?? (plan.route.startsWith('comfyui') ? 'comfy' : 'standard'),
     prompt: plan.originalPrompt,
     enhancedPrompt: plan.params.prompt,
     style: plan.request.style,

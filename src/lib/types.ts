@@ -21,13 +21,22 @@ export type PlanRequest = {
   qualityTier: QualityTier
 }
 
+export type ApiMode = 'standard' | 'comfy'
+
 export type PlanSnapshot = {
   planId: string
   createdAt: string
   request: PlanRequest
+  mode?: ApiMode
   route: string
   modelId: string
   modelLabel: string
+  workflowId?: string
+  nodeInfoList?: Array<{
+    nodeId: string
+    fieldName: string
+    fieldValue: string
+  }>
   params: {
     prompt: string
     aspectRatio: string
@@ -61,6 +70,7 @@ export type RunMetadata = {
   jobId: string
   taskId: string
   createdAt: string
+  apiMode?: ApiMode
   prompt: string
   enhancedPrompt: string
   style: Style

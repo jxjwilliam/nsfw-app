@@ -3,7 +3,9 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 import type { ModelEntry, PlanRequest, QualityTier, Style } from './types'
 import { pricePreview, type SubmitBody } from './runninghub'
+import { createComfyPlan } from './comfy-plan'
 import { savePlan } from './plans'
+import { isWorkflowModeEnabled } from './workflow-config'
 
 const STYLE_SUFFIX: Record<Style, string> = {
   anime: ', anime style, vibrant colors, detailed illustration',
@@ -75,6 +77,10 @@ function buildReason(
 }
 
 export async function createPlan(request: PlanRequest) {
+  if (isWorkflowModeEnabled()) {
+    return createComfyPlan(request)
+  }
+
   const catalog = loadCatalog()
   const candidates = filterCandidates(catalog, request.style)
   if (candidates.length === 0) {
@@ -133,6 +139,7 @@ export async function createPlan(request: PlanRequest) {
     planId,
     createdAt: new Date().toISOString(),
     request,
+    mode: 'standard' as const,
     route: winner.route,
     modelId: winner.modelId,
     modelLabel: winner.modelLabel,
