@@ -1,3 +1,8 @@
+import {
+  formatRunningHubError,
+  isRunningHubApiError,
+} from './runninghub-errors'
+
 const BASE = 'https://www.runninghub.cn'
 
 function getApiKey(): string {
@@ -52,7 +57,11 @@ export async function pricePreview(
     const text = await res.text()
     throw new Error(`price-preview failed ${res.status}: ${text}`)
   }
-  return res.json()
+  const data = (await res.json()) as PricePreviewResponse
+  if (isRunningHubApiError(data)) {
+    throw new Error(formatRunningHubError(data.errorCode, data.errorMessage))
+  }
+  return data
 }
 
 export async function submitTask(
@@ -68,7 +77,14 @@ export async function submitTask(
     const text = await res.text()
     throw new Error(`submit failed ${res.status}: ${text}`)
   }
-  return res.json()
+  const data = (await res.json()) as SubmitResponse
+  if (data.errorCode || data.errorMessage) {
+    throw new Error(formatRunningHubError(data.errorCode, data.errorMessage))
+  }
+  if (!data.taskId) {
+    throw new Error('RunningHub submit returned no taskId')
+  }
+  return data
 }
 
 export async function queryTask(taskId: string): Promise<QueryResponse> {

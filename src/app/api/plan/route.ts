@@ -51,9 +51,10 @@ export async function POST(req: Request) {
     return NextResponse.json(plan)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'plan failed'
-    const status =
-      message.includes('RH_API_KEY') ||
-      message.includes('price previews failed')
+    const status = message.includes('Enterprise-Shared')
+      ? 403
+      : message.includes('RH_API_KEY') ||
+          message.includes('price previews failed')
         ? 503
         : message.includes('No NSFW')
           ? 422

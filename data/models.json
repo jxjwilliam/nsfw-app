@@ -15,7 +15,7 @@
   {
     "id": "g2-budget",
     "label": "全能图片G-2.0-文生图-低价渠道版",
-    "route": "rhart-image-g-2-0/text-to-image",
+    "route": "rhart-image-g-2/text-to-image",
     "nsfwOk": true,
     "styles": ["anime", "hentai", "realistic", "hassaku"],
     "tierMap": {

@@ -17,7 +17,11 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 — use **Plan**, review the card, then **Confirm** to generate.
+Open http://localhost:3002 (dev server uses port 3002 by default).
+
+**API key tier:** Standard Model APIs (全能图片G-2 text-to-image) require an **Enterprise-Shared** RunningHub API key. Consumer keys return error `1014`; the app shows this when you click **Plan**.
+
+Use **Plan** → review the card → **Confirm** to generate.
 
 Production-style run (after build):
 
@@ -32,7 +36,7 @@ Without `RH_API_KEY`, plan/generate routes return an error JSON (typically **503
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Next.js dev server on port 3000 (default) |
+| `npm run dev` | Next.js dev server on port **3002** |
 | `npm run build` | Production build |
 | `npm run start` | Serve production build (after `build`) |
 | `npm run lint` | ESLint via Next.js |
@@ -56,7 +60,7 @@ outputs/YYYY-MM-DD/<jobId>/
 With the dev server running and a valid key:
 
 ```bash
-curl -sS -X POST http://localhost:3000/api/plan \
+curl -sS -X POST http://localhost:3002/api/plan \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"test","style":"realistic","aspectRatio":"1:1","qualityTier":"medium"}'
 ```

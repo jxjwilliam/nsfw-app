@@ -83,6 +83,7 @@ export async function createPlan(request: PlanRequest) {
 
   const enhanced = enhancePrompt(request.prompt, request.style)
   const previews: ScoredCandidate[] = []
+  const previewErrors: string[] = []
 
   for (const model of candidates.slice(0, 4)) {
     const tierParams = model.tierMap[request.qualityTier]
@@ -94,7 +95,6 @@ export async function createPlan(request: PlanRequest) {
     }
     try {
       const price = await pricePreview(model.route, params)
-      if (price.errorMessage) continue
       previews.push({
         modelId: model.id,
         modelLabel: model.label,
@@ -104,13 +104,18 @@ export async function createPlan(request: PlanRequest) {
         priority: model.priority,
         params,
       })
-    } catch {
-      continue
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      previewErrors.push(`${model.label}: ${msg}`)
     }
   }
 
   if (previews.length === 0) {
-    throw new Error('All price previews failed — check RH_API_KEY and membership')
+    const detail = previewErrors[0] ?? previewErrors.join(' | ')
+    throw new Error(
+      detail ||
+        'All price previews failed — check RH_API_KEY, membership, and API key tier (Standard Model API needs Enterprise-Shared key).'
+    )
   }
 
   const ranked = rankCandidates(catalog, previews, request.qualityTier)
