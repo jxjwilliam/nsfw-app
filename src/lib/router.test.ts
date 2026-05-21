@@ -61,4 +61,25 @@ describe('rankCandidates', () => {
     )
     expect(ranked[0].modelId).toBe('a')
   })
+
+  it('medium tier balances priority and price', () => {
+    const ranked = rankCandidates(
+      models,
+      [
+        { modelId: 'a', estimatedPrice: 1.0, priority: 10 },
+        { modelId: 'b', estimatedPrice: 0.2, priority: 5 },
+      ],
+      'medium'
+    )
+    expect(ranked[0].modelId).toBe('a')
+    const ranked2 = rankCandidates(
+      models,
+      [
+        { modelId: 'a', estimatedPrice: 2.0, priority: 5 },
+        { modelId: 'b', estimatedPrice: 0.5, priority: 10 },
+      ],
+      'medium'
+    )
+    expect(ranked2[0].modelId).toBe('b')
+  })
 })

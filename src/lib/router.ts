@@ -62,13 +62,8 @@ export function rankCandidates<T extends RankableCandidate>(
         b.priority - a.priority || a.estimatedPrice - b.estimatedPrice
     )
   }
-  return copy.sort(
-    (a, b) =>
-      b.priority -
-      a.priority +
-      b.estimatedPrice -
-      (a.priority + a.estimatedPrice)
-  )
+  const score = (c: RankableCandidate) => c.priority * 10 - c.estimatedPrice
+  return copy.sort((a, b) => score(b) - score(a))
 }
 
 function buildReason(
