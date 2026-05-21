@@ -69,7 +69,7 @@ export type RunMetadata = {
   route: string
   modelLabel: string
   estimatedPrice: number
-  status: 'SUCCESS' | 'FAILED'
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED'
   imageFile?: string
   errorMessage?: string
   actualUsage?: Record<string, unknown>

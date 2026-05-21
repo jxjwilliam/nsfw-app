@@ -28,7 +28,7 @@ export async function initJobDir(
     route: plan.route,
     modelLabel: plan.modelLabel,
     estimatedPrice: plan.estimatedPrice,
-    status: 'FAILED',
+    status: 'RUNNING',
   }
   await writeFile(path.join(dir, 'metadata.json'), JSON.stringify(meta, null, 2))
   return dir
@@ -85,4 +85,12 @@ export async function listHistory(
   return entries
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, limit)
+}
+
+export async function findRunByJobId(
+  jobId: string,
+  limit = 500
+): Promise<(RunMetadata & { outputDir: string }) | null> {
+  const entries = await listHistory(limit)
+  return entries.find((e) => e.jobId === jobId) ?? null
 }
