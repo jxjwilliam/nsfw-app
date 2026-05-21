@@ -1,0 +1,76 @@
+export type Style = 'anime' | 'realistic' | 'hentai' | 'hassaku'
+export type QualityTier = 'low' | 'medium' | 'high'
+
+export type ModelEntry = {
+  id: string
+  label: string
+  route: string
+  nsfwOk: boolean
+  styles: Style[] | ['all']
+  tierMap: Record<
+    QualityTier,
+    { resolution: '1k' | '2k' | '4k'; quality: 'low' | 'medium' | 'high' }
+  >
+  priority: number
+}
+
+export type PlanRequest = {
+  prompt: string
+  style: Style
+  aspectRatio: string
+  qualityTier: QualityTier
+}
+
+export type PlanSnapshot = {
+  planId: string
+  createdAt: string
+  request: PlanRequest
+  route: string
+  modelId: string
+  modelLabel: string
+  params: {
+    prompt: string
+    aspectRatio: string
+    resolution: string
+    quality: string
+  }
+  originalPrompt: string
+  estimatedPrice: number
+  currency: string
+  reason: string
+  alternatives: Array<{
+    modelId: string
+    modelLabel: string
+    route: string
+    estimatedPrice: number
+    reason: string
+  }>
+}
+
+export type JobRecord = {
+  jobId: string
+  planId: string
+  taskId: string
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED'
+  createdAt: string
+  outputDir?: string
+  errorMessage?: string
+}
+
+export type RunMetadata = {
+  jobId: string
+  taskId: string
+  createdAt: string
+  prompt: string
+  enhancedPrompt: string
+  style: Style
+  aspectRatio: string
+  qualityTier: QualityTier
+  route: string
+  modelLabel: string
+  estimatedPrice: number
+  status: 'SUCCESS' | 'FAILED'
+  imageFile?: string
+  errorMessage?: string
+  actualUsage?: Record<string, unknown>
+}

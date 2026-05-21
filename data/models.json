@@ -1,0 +1,28 @@
+[
+  {
+    "id": "g2-official",
+    "label": "全能图片G-2-文生图-官方稳定版",
+    "route": "rhart-image-g-2-official/text-to-image",
+    "nsfwOk": true,
+    "styles": ["realistic", "hentai", "hassaku", "anime"],
+    "tierMap": {
+      "low": { "resolution": "1k", "quality": "low" },
+      "medium": { "resolution": "2k", "quality": "medium" },
+      "high": { "resolution": "4k", "quality": "high" }
+    },
+    "priority": 10
+  },
+  {
+    "id": "g2-budget",
+    "label": "全能图片G-2.0-文生图-低价渠道版",
+    "route": "rhart-image-g-2-0/text-to-image",
+    "nsfwOk": true,
+    "styles": ["anime", "hentai", "realistic", "hassaku"],
+    "tierMap": {
+      "low": { "resolution": "1k", "quality": "low" },
+      "medium": { "resolution": "2k", "quality": "medium" },
+      "high": { "resolution": "2k", "quality": "medium" }
+    },
+    "priority": 5
+  }
+]
