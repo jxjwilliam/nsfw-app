@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  loadStoredPrefs,
+  mergePrefs,
+  NSFW_DEFAULTS,
+  saveStoredPrefs,
+} from "@/lib/nsfw-defaults";
 import type { PlanSnapshot, QualityTier, RunMetadata, Style } from "@/lib/types";
 
 type HistoryItem = RunMetadata & { outputDir: string };
@@ -113,11 +119,16 @@ function ChipRowRatios({
   );
 }
 
+function readInitialPrefs() {
+  return mergePrefs(loadStoredPrefs());
+}
+
 export default function Home() {
-  const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState<Style>("realistic");
-  const [aspectRatio, setAspectRatio] = useState<string>("1:1");
-  const [qualityTier, setQualityTier] = useState<QualityTier>("medium");
+  const [prefsReady, setPrefsReady] = useState(false);
+  const [prompt, setPrompt] = useState<string>(NSFW_DEFAULTS.prompt);
+  const [style, setStyle] = useState<Style>(NSFW_DEFAULTS.style);
+  const [aspectRatio, setAspectRatio] = useState<string>(NSFW_DEFAULTS.aspectRatio);
+  const [qualityTier, setQualityTier] = useState<QualityTier>(NSFW_DEFAULTS.qualityTier);
 
   const [plan, setPlan] = useState<PlanSnapshot | null>(null);
   const [gen, setGen] = useState<GenState>({ phase: "idle" });
@@ -149,6 +160,20 @@ export default function Home() {
       /* ignore */
     }
   }, []);
+
+  useEffect(() => {
+    const p = readInitialPrefs();
+    setPrompt(p.prompt);
+    setStyle(p.style);
+    setAspectRatio(p.aspectRatio);
+    setQualityTier(p.qualityTier);
+    setPrefsReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsReady) return;
+    saveStoredPrefs({ prompt, style, aspectRatio, qualityTier });
+  }, [prefsReady, prompt, style, aspectRatio, qualityTier]);
 
   useEffect(() => {
     void fetchHistory();
@@ -351,7 +376,9 @@ export default function Home() {
           RunningHub Generator
         </h1>
         <p className="max-w-xl text-sm text-[color:var(--muted)]">
-          Plan a route and price, confirm to generate, then save from disk-backed outputs.
+          NSFW-only · defaults saved in this browser (style {NSFW_DEFAULTS.style},{" "}
+          {NSFW_DEFAULTS.aspectRatio}, {NSFW_DEFAULTS.qualityTier}). RunningHub has no
+          switch to disable content safety on official APIs.
         </p>
       </header>
 

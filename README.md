@@ -21,6 +21,10 @@ Open http://localhost:3002 (dev server uses port 3002 by default).
 
 **API key tier:** Standard Model APIs (全能图片G-2 text-to-image) require an **Enterprise-Shared** RunningHub API key. Consumer keys return error `1014`; the app shows this when you click **Plan**.
 
+**Content safety (NSFW):** RunningHub enforces server-side review on Standard Model APIs. There is **no API flag, console toggle, or env var** to disable it. Error `1501` / “内容安全审查未通过” means the prompt was blocked — use softer wording, a ComfyUI uncensored workflow, or another provider. This app cannot bypass that filter.
+
+**Defaults (NSFW-only app):** First visit uses **Hentai · 9:16 · High**. Your last prompt and chips are saved in browser `localStorage` (`runninghub-nsfw-prefs-v1`) so you do not re-pick them every session.
+
 Use **Plan** → review the card → **Confirm** to generate.
 
 Production-style run (after build):

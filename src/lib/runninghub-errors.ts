@@ -11,6 +11,23 @@ export function formatRunningHubError(errorCode?: string, errorMessage?: string)
       `(RH ${errorCode ?? '1014'})`
     )
   }
+  if (
+    errorCode === '1501' ||
+    msg.includes('Content security') ||
+    msg.includes('内容安全')
+  ) {
+    return (
+      'RunningHub content safety blocked this prompt (RH 1501). ' +
+      'There is no API flag to disable this on Standard Model APIs. ' +
+      'Try softer wording, a ComfyUI uncensored workflow, or another provider. ' +
+      (errorCode ? `(${msg})` : '')
+    )
+  }
+  if (errorCode === '1505' || msg.includes('Real people') || msg.includes('真人')) {
+    return (
+      'RunningHub blocked real-person content (RH 1505). Use anime/illustration style or a different workflow.'
+    )
+  }
   return errorCode ? `${msg} (RH ${errorCode})` : msg
 }
 
