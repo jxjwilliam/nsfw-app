@@ -7,6 +7,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 | Doc | Contents |
 |-----|----------|
 | [Implementation guide](docs/implementation-guide.md) | Detailed flows, mermaid diagrams, dual-backend behavior (less code, more description) |
+| [Image creation pipeline](docs/image-creation-pipeline.md) | All resources and parameters used from plan → generate → status |
 | [Design spec](docs/superpowers/specs/2026-05-21-runninghub-nsfw-generator-design.md) | Original product contract |
 | [Build plan](docs/superpowers/plans/2026-05-21-runninghub-nsfw-generator.md) | Agent step-by-step implementation checklist |
 
@@ -33,6 +34,14 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 5. **View** — image served from `/api/image?jobId=...`; files also written under `outputs/YYYY-MM-DD/<jobId>/`.
 
 No login, no payment UI — only your RunningHub account balance is charged when you confirm.
+
+## Screenshots
+
+| Home |
+|------|
+| ![Home](screenshots/home.png) |
+
+## App workflow
 
 ### What the server does (plan → generate → status)
 

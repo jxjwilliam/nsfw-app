@@ -11,6 +11,7 @@
 | [Design spec](./superpowers/specs/2026-05-21-runninghub-nsfw-generator-design.md) | Original product contract (partially superseded by ComfyUI mode) |
 | [Build plan](./superpowers/plans/2026-05-21-runninghub-nsfw-generator.md) | Step-by-step agent implementation checklist |
 | [README](../README.md) | Setup, quick start, operator notes |
+| [Image creation pipeline](./image-creation-pipeline.md) | Resources and parameters for plan → generate → status |
 | [ComfyUI workflow setup](../workflows/README.md) | Import `sdxl-txt2img-api.json` on RunningHub |
 
 ---
