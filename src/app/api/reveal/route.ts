@@ -2,6 +2,9 @@ import { execFile } from 'child_process'
 import { realpath } from 'fs/promises'
 import path from 'path'
 
+const OUTPUTS_BASE =
+  process.env.VERCEL === '1' ? '/tmp' : process.cwd().replace(/\/$/, '')
+
 import { NextResponse } from 'next/server'
 
 import { ensureJobHydrated, getJob } from '@/lib/jobs'
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const outsRoot = await realpath(path.join(process.cwd(), 'outputs'))
+    const outsRoot = await realpath(path.join(OUTPUTS_BASE, 'outputs'))
     const targetDir = await realpath(path.resolve(rawDir))
 
     const prefix = outsRoot.endsWith(path.sep) ? outsRoot : outsRoot + path.sep

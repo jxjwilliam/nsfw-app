@@ -1,6 +1,9 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 
+const OUTPUTS_BASE =
+  process.env.VERCEL === '1' ? '/tmp' : process.cwd().replace(/\/$/, '')
+
 import { NextResponse } from 'next/server'
 
 import { ensureJobHydrated, getJob } from '@/lib/jobs'
@@ -24,7 +27,7 @@ export async function GET(req: Request) {
     return new NextResponse('Not found', { status: 404 })
   }
 
-  const outsRoot = path.resolve(process.cwd(), 'outputs')
+  const outsRoot = path.resolve(OUTPUTS_BASE, 'outputs')
   const resolvedDir = path.resolve(dir)
   if (!(resolvedDir === outsRoot || resolvedDir.startsWith(outsRoot + path.sep))) {
     return new NextResponse('Forbidden', { status: 403 })

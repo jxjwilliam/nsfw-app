@@ -4,8 +4,11 @@ import path from 'path'
 import type { PlanSnapshot, RunMetadata } from './types'
 import { downloadImage } from './runninghub'
 
+const OUTPUTS_BASE =
+  process.env.VERCEL === '1' ? '/tmp' : process.cwd().replace(/\/$/, '')
+
 function outputsRoot(): string {
-  return path.join(process.cwd(), 'outputs')
+  return path.join(OUTPUTS_BASE, 'outputs')
 }
 
 function isVisibleEntry(name: string): boolean {
