@@ -5,3 +5,5 @@ node_modules/
 outputs/
 .plans/
 .DS_Store
+.obsidian/
+.codegraph/

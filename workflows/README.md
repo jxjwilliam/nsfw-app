@@ -40,10 +40,12 @@ Restart the dev server: `npm run dev`.
 With the server running:
 
 ```bash
-curl -sS "http://localhost:3002/api/workflow-setup"
+curl -sS "http://localhost:4000/api/workflow-setup"
 ```
 
 Expect JSON with `workflowId`, `nodes` (editable fields), and `ok: true`. If `workflowId` is missing or wrong, you’ll get a clear error.
+
+**Troubleshooting RH 810:** `WORKFLOW_NOT_SAVED_OR_NOT_RUNNING` means you copied the URL ID but did not **save and run** the workflow in the RunningHub UI. The app returns HTTP **502** with the same guidance on `/api/workflow-setup` and `/api/generate`.
 
 Then use the UI: **Plan** should show **ComfyUI workflow** instead of G-2 Standard Model routes.
 

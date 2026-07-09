@@ -23,7 +23,7 @@ Design principles:
 
 - **Transparency** — Every run records which route was chosen, why, and what it cost (when RunningHub exposes it).
 - **Confirm-before-spend** — Planning is separate from submission so you can reject a route or price.
-- **No auth layer** — Trust is “whoever can reach localhost:3002 and has `RH_API_KEY` in `.env.local`.”
+- **No auth layer** — Trust is “whoever can reach localhost:4000 and has `RH_API_KEY` in `.env.local`.”
 - **Disk as database** — Plans and jobs are JSON files; no Postgres or Supabase.
 
 ---
@@ -43,7 +43,7 @@ flowchart LR
     Comfy[ComfyUI task APIs]
   end
 
-  Browser <-->|HTTP localhost:3002| Next
+  Browser <-->|HTTP localhost:4000| Next
   Next <-->|read/write| Disk
   Next -->|Bearer RH_API_KEY| G2
   Next -->|apiKey in body + Bearer| Comfy
@@ -57,7 +57,7 @@ flowchart LR
 | Config | `.env.local`, `data/models.json`, optional `RH_WORKFLOW_*` | Secrets and allowlists |
 | Artifacts | `outputs/`, `.plans/` | Gitignored run history and short-lived plans |
 
-Dev server listens on **port 3002** (not 3000) to avoid clashing with other local apps.
+Dev server listens on **`PORT` from `.env.local`** (default **4000**). `npm run dev` sources `.env.local` before starting Next.js.
 
 ---
 
@@ -406,11 +406,13 @@ erDiagram
   }
 ```
 
-**History API** walks `outputs/**/metadata.json`, sorts by `createdAt`, returns the latest N entries. No separate index file.
+**History API** walks `outputs/**/metadata.json`, sorts by `createdAt`, returns the latest N entries. No separate index file. Directory scans skip hidden names (including macOS `._*` AppleDouble files on exFAT volumes) so symlinked external `outputs/` folders remain readable.
+
+**Job lookup** uses `findRunDirByJobId` for direct `outputs/YYYY-MM-DD/<jobId>/` resolution before falling back to a full history scan — this powers `/api/status`, `/api/image`, and `/api/reveal` after a dev-server restart.
 
 ### 8.3 In-memory job cache
 
-`src/lib/jobs.ts` keeps a `Map` of active jobs for fast polling within one Node process. After `next dev` restart, the first status poll **rehydrates** from disk if `metadata.json` exists.
+`src/lib/jobs.ts` keeps a `Map` of active jobs for fast polling within one Node process. After `next dev` restart, the first status poll **rehydrates** from disk via `ensureJobHydrated` → `findRunByJobId` (which reads `metadata.json` under `outputs/`).
 
 ---
 
@@ -422,12 +424,12 @@ Descriptions only — open the file when you need to change behavior.
 |--------|----------------|
 | `runninghub.ts` | Standard Model HTTP: price preview, submit, query, image download |
 | `runninghub-comfy.ts` | ComfyUI HTTP: create task, poll outputs, fetch workflow JSON for setup |
-| `runninghub-errors.ts` | Map RunningHub codes (1014, 1501, 1505) to operator-readable messages |
+| `runninghub-errors.ts` | Map RunningHub codes (1014, 1501, 1505) and ComfyUI codes (801, 810) to operator-readable messages |
 | `workflow-config.ts` | Read `RH_WORKFLOW_ID` and optional node ID overrides |
 | `router.ts` | Catalog load, filter, enhance, preview, rank, `createPlan` entry (delegates to comfy when configured) |
 | `comfy-plan.ts` | Dimension map, node list builder, `createComfyPlan` |
 | `plans.ts` | TTL read/write for `.plans/` |
-| `output-store.ts` | Job directory creation, finalize success/failure, history scan |
+| `output-store.ts` | Job directory creation, finalize success/failure, history scan, direct job-dir lookup |
 | `jobs.ts` | In-memory job state + hydration |
 | `nsfw-defaults.ts` | Default style/ratio/tier; browser `localStorage` helpers |
 | `types.ts` | Shared TypeScript shapes (`PlanSnapshot`, `RunMetadata`, `ApiMode`) |
@@ -455,6 +457,7 @@ Descriptions only — open the file when you need to change behavior.
 
 | Variable | Required | Effect |
 |----------|----------|--------|
+| `PORT` | No | Dev server port (default `4000`; read from `.env.local` by `npm run dev`) |
 | `RH_API_KEY` | Yes | RunningHub authentication (server only) |
 | `RH_WORKFLOW_ID` | No | Enables ComfyUI mode when set |
 | `RH_WORKFLOW_PROMPT_NODE` | No | Default `6` |
@@ -477,7 +480,9 @@ Browser persistence (not env): `runninghub-nsfw-prefs-v1` in `localStorage` for 
 | Real-person block (`1505`) | 502 | Use illustration style |
 | Plan expired | 404 | Re-plan within 5 minutes |
 | Poll timeout (60 × ~8s) | 200 body FAILED | Try again later |
-| Invalid workflow ID | 502 on workflow-setup | Re-import or fix env |
+| Invalid workflow ID (801) | 502 on generate / workflow-setup | Re-import or fix `RH_WORKFLOW_ID` |
+| Workflow not saved/run (810) | 502 on generate / workflow-setup | Save and run workflow once in RunningHub UI |
+| Job not on disk / hydration failed | 404 on status | Re-generate; check `outputs/` path or symlink |
 
 The app does **not** auto-retry failed RunningHub tasks in v1.
 
@@ -504,7 +509,7 @@ Defaults on first visit: **Hentai**, **9:16**, **High** (NSFW-only product choic
 
 | Area | Approach |
 |------|----------|
-| Router ranking / prompt enhancement | Vitest unit tests (`router.test.ts`, `comfy-plan.test.ts`) |
+| Router ranking / prompt enhancement | Vitest unit tests (`router.test.ts`, `comfy-plan.test.ts`, `output-store.test.ts`) |
 | RunningHub integration | Manual smoke via `curl` or UI; requires real key |
 | ComfyUI path | Set `RH_WORKFLOW_ID`, run `workflow-setup`, then full Plan → Confirm |
 
@@ -539,4 +544,4 @@ flowchart TD
 
 ---
 
-*Last updated to reflect ComfyUI workflow mode, port 3002, NSFW defaults, and `localStorage` preferences.*
+*Last updated to reflect ComfyUI workflow mode, port 4000 via `.env.local`, exFAT-safe output scanning, ComfyUI error 810/801 handling, NSFW defaults, and `localStorage` preferences.*

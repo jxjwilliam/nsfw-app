@@ -4,6 +4,7 @@ import {
   getWorkflowJson,
   listEditableNodesFromPromptJson,
 } from '@/lib/runninghub-comfy'
+import { formatComfyUiError } from '@/lib/runninghub-errors'
 import { getWorkflowConfig, getWorkflowId } from '@/lib/workflow-config'
 
 export async function GET() {
@@ -29,7 +30,8 @@ export async function GET() {
       hint: 'Set RH_WORKFLOW_ID in .env.local after importing workflows/sdxl-txt2img-api.json on RunningHub.',
     })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'workflow setup failed'
+    const raw = e instanceof Error ? e.message : 'workflow setup failed'
+    const message = formatComfyUiError(raw)
     const status = message.includes('RH_API_KEY') ? 503 : 502
     return NextResponse.json({ ok: false, error: message }, { status })
   }

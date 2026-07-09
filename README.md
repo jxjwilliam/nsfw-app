@@ -45,35 +45,18 @@ sequenceDiagram
   participant RH as RunningHub
 
   UI->>Plan: prompt, style, aspectRatio, qualityTier
-  alt RH_WORKFLOW_ID set
-    Plan->>Plan: enhance prompt, build nodeInfoList
-    Plan-->>UI: planId, ComfyUI workflow, ¥0 estimate
-  else Standard Model
-    Plan->>RH: price-preview per candidate model
-    Plan->>Plan: rank by quality tier
-    Plan-->>UI: planId, model, estimatedPrice, reason
-  end
-  Note over Plan: snapshot saved to .plans/ (5 min TTL)
+  Plan->>Plan: choose ComfyUI workflow or Standard Model route
+  Plan-->>UI: planId, route, estimatedPrice, reason
 
   UI->>Gen: planId
-  alt ComfyUI mode
-    Gen->>RH: POST /task/openapi/create
-  else Standard mode
-    Gen->>RH: POST /openapi/v2/{route}
-  end
+  Gen->>RH: submit task for selected route
   Gen->>Gen: init outputs/.../metadata.json
   Gen-->>UI: jobId, taskId
 
-  loop until SUCCESS, FAILED, or timeout
-    UI->>Status: jobId
-    alt ComfyUI mode
-      Status->>RH: POST /task/openapi/outputs
-    else Standard mode
-      Status->>RH: POST /openapi/v2/query
-    end
-    Status-->>UI: RUNNING or SUCCESS or FAILED
-  end
-  Note over Status: on SUCCESS, download image → outputs/.../image.png
+  UI->>Status: jobId
+  Status->>RH: query task status until success or failure
+  Status-->>UI: RUNNING, SUCCESS, or FAILED
+  Status->>Gen: on success, save image to outputs/.../image.png
 ```
 
 ### Generation modes
@@ -118,7 +101,7 @@ ComfyUI mode skips the router and builds a `nodeInfoList` (prompt, negative, wid
 
 ```text
 runninghub-app/
-├── .env.local              # RH_API_KEY, optional RH_WORKFLOW_ID
+├── .env.local              # RH_API_KEY, PORT, optional RH_WORKFLOW_ID
 ├── data/models.json        # Standard Model catalog (router)
 ├── workflows/              # ComfyUI JSON to import on RunningHub
 ├── .plans/<planId>.json    # gitignored; plan TTL ~5 min
@@ -127,6 +110,8 @@ runninghub-app/
     ├── plan.json           # full plan snapshot
     └── image.png           # after SUCCESS
 ```
+
+`outputs/` is gitignored. You may use a **symlink** to external storage (e.g. exFAT) — `listHistory` and job hydration skip macOS `._*` AppleDouble junk so `/api/status` and `/api/history` keep working after a dev-server restart.
 
 ## Prerequisites
 
@@ -138,13 +123,14 @@ runninghub-app/
 ```bash
 cp .env.example .env.local
 # Edit .env.local: set RH_API_KEY from RunningHub API console (server-side only).
+# Optional: PORT=4000 (default dev port; change in .env.local).
 # Optional: set RH_WORKFLOW_ID after importing the ComfyUI workflow (see below).
 
 npm install
 npm run dev
 ```
 
-Open http://localhost:3002 (dev server uses port **3002** by default; port 3000 may be another app).
+Open http://localhost:4000 (`npm run dev` reads `PORT` from `.env.local`, default **4000**).
 
 Use **Plan** → review the card → **Confirm** to generate.
 
@@ -163,6 +149,8 @@ Without `RH_API_KEY`, plan/generate routes return **503** with a message about t
 
 **Content safety (G-2):** No API or env switch disables review on Standard Model routes. Error `1501` means the prompt was blocked — use ComfyUI workflow mode or softer wording.
 
+**ComfyUI workflow readiness:** Error **810** (`WORKFLOW_NOT_SAVED_OR_NOT_RUNNING`) means the ID is set but the workflow was not saved/run in the RunningHub UI yet. `/api/generate` and `/api/workflow-setup` return **502** with steps to fix. Error **801** means the workflow ID is invalid.
+
 ### ComfyUI workflow setup (recommended for NSFW)
 
 1. Import [`workflows/sdxl-txt2img-api.json`](workflows/sdxl-txt2img-api.json) on [RunningHub](https://www.runninghub.cn) ([`workflows/README.md`](workflows/README.md)).
@@ -174,7 +162,7 @@ Without `RH_API_KEY`, plan/generate routes return **503** with a message about t
 4. Restart `npm run dev`.
 5. Verify:
    ```bash
-   curl -sS http://localhost:3002/api/workflow-setup
+   curl -sS http://localhost:4000/api/workflow-setup
    ```
 
 Plan should then show **ComfyUI workflow (RH_WORKFLOW_ID)** instead of a G-2 model.
@@ -183,18 +171,18 @@ Plan should then show **ComfyUI workflow (RH_WORKFLOW_ID)** instead of a G-2 mod
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Next.js dev server on port **3002** |
+| `npm run dev` | Next.js dev server (`PORT` from `.env.local`, default **4000**) |
 | `npm run build` | Production build |
 | `npm run start` | Serve production build (after `build`) |
 | `npm run lint` | ESLint via Next.js |
-| `npm test` | Router / Comfy plan unit tests (Vitest) |
+| `npm test` | Router, Comfy plan, and output-store unit tests (Vitest) |
 
 ## Quick API smoke test
 
 With the dev server running:
 
 ```bash
-curl -sS -X POST http://localhost:3002/api/plan \
+curl -sS -X POST http://localhost:4000/api/plan \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"test","style":"hentai","aspectRatio":"9:16","qualityTier":"high"}'
 ```

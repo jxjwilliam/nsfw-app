@@ -7,6 +7,10 @@ import { NextResponse } from 'next/server'
 import { setJob, setMeta } from '@/lib/jobs'
 import { initJobDir } from '@/lib/output-store'
 import { loadPlan } from '@/lib/plans'
+import {
+  comfyErrorStatus,
+  formatComfyUiError,
+} from '@/lib/runninghub-errors'
 import { submitComfyTask } from '@/lib/runninghub-comfy'
 import { submitTask } from '@/lib/runninghub'
 import type { RunMetadata } from '@/lib/types'
@@ -66,7 +70,9 @@ export async function POST(req: Request) {
       status: 'RUNNING' as const,
     })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'generate failed'
+    const raw = e instanceof Error ? e.message : 'generate failed'
+    const message =
+      raw.startsWith('ComfyUI') ? formatComfyUiError(raw) : raw
     const hint =
       message.includes('RH_API_KEY') ?
         ` — configure RH_API_KEY in .env.local`
@@ -75,8 +81,8 @@ export async function POST(req: Request) {
     const status =
       message.includes('RH_API_KEY')
         ? 503
-        : message.includes('submit failed')
-          ? 502
+        : message.includes('submit failed') || raw.startsWith('ComfyUI')
+          ? comfyErrorStatus(raw)
           : 500
 
     return NextResponse.json({ error: message + hint }, { status })

@@ -31,6 +31,36 @@ export function formatRunningHubError(errorCode?: string, errorMessage?: string)
   return errorCode ? `${msg} (RH ${errorCode})` : msg
 }
 
+/** ComfyUI task API errors (code in message like "… (code 810)"). */
+export function formatComfyUiError(message: string): string {
+  const codeMatch = message.match(/\(code (\d+)\)/)
+  const code = codeMatch?.[1]
+
+  if (
+    code === '810' ||
+    message.includes('WORKFLOW_NOT_SAVED_OR_NOT_RUNNING')
+  ) {
+    return (
+      'RunningHub workflow is not ready (RH 810). Open the workflow on runninghub.cn, save it, run it once in the UI, then retry. ' +
+      'Verify with GET /api/workflow-setup (see workflows/README.md).'
+    )
+  }
+
+  if (code === '801' || message.includes('WORKFLOW_NOT_FOUND')) {
+    return (
+      'RunningHub workflow ID not found (RH 801). Re-import workflows/sdxl-txt2img-api.json and update RH_WORKFLOW_ID in .env.local.'
+    )
+  }
+
+  return formatRunningHubError(code, message.replace(/^ComfyUI [^:]+: /, '').replace(/ \(code \d+\)$/, ''))
+}
+
+export function comfyErrorStatus(message: string): number {
+  if (message.includes('RH_API_KEY')) return 503
+  if (message.startsWith('ComfyUI') || message.includes('RunningHub')) return 502
+  return 500
+}
+
 export function isRunningHubApiError(payload: {
   errorCode?: string
   errorMessage?: string
