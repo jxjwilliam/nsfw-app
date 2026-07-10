@@ -37,9 +37,9 @@ export function resolveDimensions(aspectRatio: string): { width: number; height:
 
 export function buildComfyNodeInfoList(
   request: PlanRequest,
-  enhancedPrompt: string
+  enhancedPrompt: string,
+  cfg = getWorkflowConfig()
 ): NodeInfo[] {
-  const cfg = getWorkflowConfig()
   if (!cfg) throw new Error('RH_WORKFLOW_ID is not configured')
 
   const { width, height } = resolveDimensions(request.aspectRatio)
@@ -66,9 +66,8 @@ export async function createComfyPlan(request: PlanRequest) {
       'RH_WORKFLOW_ID is not set. Import workflows/sdxl-txt2img-api.json on RunningHub, then add the workflow ID from the URL to .env.local (see workflows/README.md).'
     )
   }
-
   const enhanced = enhancePrompt(request.prompt, request.style)
-  const nodeInfoList = buildComfyNodeInfoList(request, enhanced)
+  const nodeInfoList = buildComfyNodeInfoList(request, enhanced, wf)
   const planId = randomUUID()
 
   const snapshot = {
