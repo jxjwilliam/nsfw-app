@@ -32,26 +32,14 @@ const CHECKPOINTS = [
   "realvisxlV50_v50LightningBakedvae.safetensors"
 ];
 
-const MAX_WORKFLOWS = 3;
 const OUTPUT_DIR = join(__dirname, '..', 'generated-workflows');
-
-// Parse CLI args
-const args = process.argv.slice(2).reduce((acc, arg) => {
-  const [key, value] = arg.split('=');
-  acc[key.replace('--', '')] = value ? parseInt(value) : true;
-  return acc;
-}, {});
-
-const count = Math.min(args.count || MAX_WORKFLOWS, 10);
 
 if (!DEEPSEEK_API_KEY && !DASHSCOPE_API_KEY) {
   console.error('❌ Neither DEEPSEEK_API_KEY nor DASHSCOPE_API_KEY found in .env.local');
   process.exit(1);
 }
 
-function randomCheckpoint() {
-  return CHECKPOINTS[Math.floor(Math.random() * CHECKPOINTS.length)];
-}
+
 
 async function generateWithDeepSeek(systemPrompt, userPrompt) {
   const response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
@@ -210,18 +198,18 @@ async function main() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  console.log('🚀 Dynamic NSFW Workflow Generator');
-  console.log(`Generating ${count} workflows...`);
+  console.log(`🚀 Generating ${CHECKPOINTS.length} workflows (1 per checkpoint)...`);
 
-  for (let i = 0; i < count; i++) {
-    const checkpoint = randomCheckpoint();
+  for (const checkpoint of CHECKPOINTS) {
     console.log(`\n📸 Generating for: ${checkpoint}`);
 
     const positivePrompt = await generatePrompt(checkpoint);
     console.log('   Prompt generated ✓');
 
     const workflow = createWorkflow(checkpoint, positivePrompt);
-    const filename = `dynamic-nsfw-${checkpoint.split('.')[0]}-${Date.now()}.json`;
+    const now = new Date();
+    const mmdd = `${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const filename = `${checkpoint.split('.')[0]}-${mmdd}-1.json`;
     const filepath = join(OUTPUT_DIR, filename);
 
     writeFileSync(filepath, JSON.stringify(workflow, null, 2));

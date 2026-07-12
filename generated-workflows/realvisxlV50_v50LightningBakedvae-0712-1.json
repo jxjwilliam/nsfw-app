@@ -1,0 +1,66 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "scheduler": "karras",
+      "negative": ["7", 0],
+      "denoise": 1,
+      "latent_image": ["5", 0],
+      "seed": 0,
+      "cfg": 3.0,
+      "sampler_name": "dpmpp_2m",
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "steps": 6
+    },
+    "_meta": { "title": "KSampler" }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "realvisxlV50_v50LightningBakedvae.safetensors"
+    },
+    "_meta": { "title": "Load Checkpoint" }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 832,
+      "height": 1216
+    },
+    "_meta": { "title": "Empty Latent Image" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "masterpiece, best quality, photorealistic, stunning 20yo Asian girl, beautiful face, slim petite body, small perky breasts, erect nipples, completely naked, shaved pussy, spread legs, wet glistening pussy, smooth skin, cinematic lighting, explicit porn",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Prompt)" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "worst quality, low quality, blurry, deformed, bad anatomy, extra limbs, censored, clothes, text, watermark, cartoon, 3d, ugly",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Negative)" }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": ["4", 2],
+      "samples": ["3", 0]
+    },
+    "_meta": { "title": "VAE Decode" }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "nsfw-realvisxl",
+      "images": ["37", 0]
+    },
+    "_meta": { "title": "Save Image" }
+  }
+}
