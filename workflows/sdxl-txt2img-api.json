@@ -18,7 +18,7 @@
   "4": {
     "class_type": "CheckpointLoaderSimple",
     "inputs": {
-      "ckpt_name": "juggernautXL_v9.safetensors"
+      "ckpt_name": "juggernautXL_ragnarokBy.safetensors"
     },
     "_meta": { "title": "Load Checkpoint" }
   },
@@ -34,7 +34,7 @@
   "6": {
     "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "masterpiece, best quality",
+      "text": "masterpiece, best quality, photorealistic, stunning seductive 25yo woman, perfect body, massive natural breasts with erect nipples, hourglass figure, completely naked explicit, lying on back with legs spread wide front view full body or arched back pose, detailed aroused wet pussy, glistening skin, pornographic expression, dramatic cinematic lighting, 8k raw photo",
       "clip": ["4", 1]
     },
     "_meta": { "title": "CLIP Text Encode (Prompt)" }

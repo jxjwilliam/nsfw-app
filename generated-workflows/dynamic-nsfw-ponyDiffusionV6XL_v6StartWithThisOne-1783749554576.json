@@ -1,0 +1,107 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "scheduler": "karras",
+      "negative": [
+        "7",
+        0
+      ],
+      "denoise": 1,
+      "latent_image": [
+        "5",
+        0
+      ],
+      "seed": 0,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "steps": 28
+    },
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors"
+    },
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 832,
+      "height": 1216
+    },
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "score_9, score_8_up, score_7_up, rating_explicit, source_anime, 1girl, solo, beautiful 20yo Asian girl, gorgeous face, seductive expression, half-closed eyes, biting lower lip, flushed cheeks, looking at viewer, perfect anatomy, flawless skin, small perky breasts, perky nipples, hard nipples, detailed areolae, shiny skin, light sweat, spread legs, wide open legs, presenting shaved pussy, highly detailed wet pussy, glistening pink labia, swollen clitoris, copious pussy juice, dripping juices, sticky wetness, arching back, thrusting hips, full body, dynamic pose, lying on back, knees up, cinematic lighting, rim light, warm bedroom background, messy sheets, sharp focus, masterpiece, best quality, explicit",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "worst quality, low quality, blurry, deformed, bad anatomy, extra limbs, censored, clothes, text, watermark, cartoon, 3d, ugly",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "CLIP Text Encode (Negative)"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "nsfw-ponyDiffusionV6XL",
+      "images": [
+        "37",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": [
+        "4",
+        2
+      ],
+      "samples": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  }
+}

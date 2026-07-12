@@ -1,0 +1,66 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "scheduler": "karras",
+      "negative": ["7", 0],
+      "denoise": 1,
+      "latent_image": ["5", 0],
+      "seed": 0,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "steps": 28
+    },
+    "_meta": { "title": "KSampler" }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors"
+    },
+    "_meta": { "title": "Load Checkpoint" }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 1024,
+      "height": 1024
+    },
+    "_meta": { "title": "Empty Latent Image" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "score_9, score_8_up, score_7_up, score_6_up, beautiful woman, detailed face, perfect body, massive breasts with erect nipples, explicit detailed pussy and anus, spread legs wide, aroused ahegao expression, completely naked porn, on bed doggy style back view or missionary front view full body, detailed anatomy juices dripping, bedroom setting, high quality explicit",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Prompt)" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "score_1, score_2, score_3, worst quality, low quality, blurry, deformed, bad anatomy, extra limbs, censored, clothes, text, watermark, cartoon, 3d",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Negative)" }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": ["4", 2],
+      "samples": ["3", 0]
+    },
+    "_meta": { "title": "VAE Decode" }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "pony-diffusion-nsfw",
+      "images": ["37", 0]
+    },
+    "_meta": { "title": "Save Image" }
+  }
+}

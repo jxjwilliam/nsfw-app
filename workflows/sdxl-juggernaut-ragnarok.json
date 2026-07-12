@@ -1,0 +1,66 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "scheduler": "karras",
+      "negative": ["7", 0],
+      "denoise": 1,
+      "latent_image": ["5", 0],
+      "seed": 0,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "steps": 28
+    },
+    "_meta": { "title": "KSampler" }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "juggernautXL_ragnarokBy.safetensors"
+    },
+    "_meta": { "title": "Load Checkpoint" }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 1024,
+      "height": 1024
+    },
+    "_meta": { "title": "Empty Latent Image" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "masterpiece, best quality, photorealistic, stunning 25yo woman, seductive aroused expression, perfect body, massive natural breasts with detailed erect nipples, hourglass figure, completely naked explicit porn, full body front view legs spread eagle or back view bent over showing ass and pussy, glistening wet aroused labia, juices dripping, detailed skin pores texture, dramatic cinematic lighting, 8k raw",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Prompt)" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "worst quality, low quality, blurry, deformed, bad anatomy, extra limbs, censored, clothes, text, watermark, cartoon, 3d",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Negative)" }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": ["4", 2],
+      "samples": ["3", 0]
+    },
+    "_meta": { "title": "VAE Decode" }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "juggernaut-ragnarok-nsfw",
+      "images": ["37", 0]
+    },
+    "_meta": { "title": "Save Image" }
+  }
+}

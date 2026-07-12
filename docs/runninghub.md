@@ -49,6 +49,22 @@ Expect JSON with `workflowId`, `nodes` (editable fields), and `ok: true`. If `wo
 
 Then use the UI: **Plan** should show **ComfyUI workflow** instead of G-2 Standard Model routes.
 
+## Available Workflows
+
+| File | Checkpoint | Best For | Steps | CFG |
+|------|-----------|----------|-------|-----|
+| `sdxl-txt2img-api.json` | juggernautXL_v9.safetensors (placeholder) | General SDXL | 28 | 7.5 |
+| `sdxl-juggernaut-ragnarok.json` | juggernautXL_ragnarokBy.safetensors | Photorealistic / Cinematic NSFW | 28 | 7.5 |
+| `sdxl-pony-diffusion.json` | ponyDiffusionV6XL_v6StartWithThisOne.safetensors | Pony-style (best NSFW) | 28 | 7.5 |
+| `sdxl-xxmix9realistic.json` | xxmix9realisticsdxl_v10.safetensors | Realistic / Photorealistic | 28 | 7.5 |
+| `sdxl-iniversemix.json` | iniverseMixSFWNSFW_realXLV1.safetensors | Versatile SFW/NSFW | 28 | 7.5 |
+| `sdxl-realvisxl-lightning.json` | realvisxlV50_v50LightningBakedvae.safetensors | Fast realistic | 6 | 3.0 |
+
+### Import Notes
+
+- **Pony Diffusion**: Works best with `score_9, score_8_up, score_7_up` tags at the start of positive prompt
+- **Lightning**: Use lower steps (4-8) and lower CFG (1-3) for best results
+
 ## Node map (default)
 
 | Node | Class | Field we override |

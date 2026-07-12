@@ -1,0 +1,66 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "scheduler": "karras",
+      "negative": ["7", 0],
+      "denoise": 1,
+      "latent_image": ["5", 0],
+      "seed": 0,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "steps": 28
+    },
+    "_meta": { "title": "KSampler" }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "iniverseMixSFWNSFW_realXLV1.safetensors"
+    },
+    "_meta": { "title": "Load Checkpoint" }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 1024,
+      "height": 1024
+    },
+    "_meta": { "title": "Empty Latent Image" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, photorealistic, stunning 25yo woman, seductive half-lidded eyes, slight aroused smile, long wavy silver hair, perfect symmetrical face, flawless glistening skin, massive heavy breasts with erect sensitive nipples, narrow waist, wide hips, thick thighs, completely nude explicit, lying on silk sheets with legs spread wide, front view full body, detailed aroused wet pussy and labia, realistic pubic hair, juices dripping, pornographic pose, cinematic warm lighting, sharp focus, intricate anatomy",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Prompt)" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "worst quality, low quality, blurry, deformed, bad anatomy, extra limbs, censored, clothes, text, watermark, cartoon, 3d",
+      "clip": ["4", 1]
+    },
+    "_meta": { "title": "CLIP Text Encode (Negative)" }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": ["4", 2],
+      "samples": ["3", 0]
+    },
+    "_meta": { "title": "VAE Decode" }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "iniversemix-nsfw",
+      "images": ["37", 0]
+    },
+    "_meta": { "title": "Save Image" }
+  }
+}
