@@ -28,7 +28,7 @@ const CFG_BY_TIER: Record<QualityTier, number> = {
   high: 8,
 }
 
-const DEFAULT_NEGATIVE =
+export const DEFAULT_NEGATIVE =
   'low quality, blurry, watermark, text, bad anatomy, deformed'
 
 export function resolveDimensions(aspectRatio: string): { width: number; height: number } {
