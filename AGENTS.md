@@ -39,8 +39,9 @@ Vercel.
 ## Architecture
 
 - Thin route handlers in `src/app/api/{plan,generate,status,image,history,reveal,workflow-setup}/route.ts`; all logic in `src/lib/*.ts`. Put new logic there with colocated vitest tests (env save/restore in `beforeEach`/`afterEach`, see `router.test.ts`).
-- Lifecycle: `/api/plan` saves `.plans/<planId>.json` (5 min TTL) → `/api/generate` creates `outputs/YYYY-MM-DD/<jobId>/` → `/api/status` polls the backend and finalizes `image.png`.
-- `outputs/` is a **symlink to ComfyUI's output dir on the SamsungT7 exFAT drive**. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same. If the drive is unmounted, status/history break after a dev-server restart.
+- Lifecycle: `/api/plan` saves `.plans/<planId>.json` (5 min TTL) → `/api/generate` creates `outputs/nsfw/images/<jobId>/` (or `outputs/nsfw/video/<jobId>/` for `mediaType: 'video'`) → `/api/status` polls the backend and finalizes `image.png` (or `video.mp4`).
+- `outputs/` is a **symlink to ComfyUI's output dir on the SamsungT7 exFAT drive**. Jobs live under `nsfw/images/<jobId>/` and `nsfw/video/<jobId>/`; ComfyUI's raw save files are redirected to `nsfw/images/raw/` and `nsfw/video/raw/` via `filename_prefix`. Legacy `outputs/YYYY-MM-DD/<jobId>/` dirs are still read by history. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same.
+- Video mode (`mediaType: 'video'` in the UI): local-only (`BACKEND=local` required, else `/api/plan` → 400). AnimateDiff + SD1.5 (`realisticVisionV51` + `mm_sd_v15_v2`, overridable via `LOCAL_VIDEO_CKPT` / `LOCAL_VIDEO_MOTION`), 16/24/32 frames and 16/20/24 steps by tier, 512×512 / 512×768 / 768×512 by aspect, mp4 via `VHS_VideoCombine`. Status polling allows 180 polls (~24 min) for video vs 60 for images.
 - `local-comfyui/checkpoints/` is a symlink to a multi-GB model dir. **Never let Tailwind scan it**: `src/app/globals.css` must keep `@import "tailwindcss" source(none);` + `@source "../**/*.{ts,tsx,mdx}";`. A plain `@import "tailwindcss"` makes `next build` scan the symlink and hang at ~32GB memory.
 - Backend dispatch happens in `createPlan()` (`src/lib/router.ts`): `BACKEND=local` → `createLocalPlan`, else comfy-workflow or standard router.
 - `src/lib/r2.ts` — dependency-free SigV4 R2 client, gated to Vercel

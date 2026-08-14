@@ -46,7 +46,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 2. **Plan** — server picks a route, shows label, estimated price (Standard mode), reason, and up to two alternatives.
 3. **Confirm** — server submits a RunningHub task and returns a `jobId`.
 4. **Poll** — UI calls `/api/status` every ~8s until `SUCCESS` or `FAILED` (max ~6 minutes).
-5. **View** — image served from `/api/image?jobId=...`; locally the full run is written under `outputs/YYYY-MM-DD/<jobId>/`, on Vercel only the media file is mirrored to R2.
+5. **View** — image (or video) served from `/api/image?jobId=...`; locally the full run is written under `outputs/nsfw/images/<jobId>/` (or `outputs/nsfw/video/<jobId>/`), on Vercel only the media file is mirrored to R2.
 
 No login, no payment UI — only your RunningHub account balance is charged when you confirm.
 
@@ -117,7 +117,7 @@ ComfyUI mode skips the router and builds a `nodeInfoList` (prompt, negative, wid
 | `/api/plan` | POST | Create plan snapshot; return `planId`, route, price, reason |
 | `/api/generate` | POST | Submit task from `planId`; create `outputs/...` job folder |
 | `/api/status` | GET | Poll RunningHub; finalize `image.png` or failure |
-| `/api/image` | GET | Serve saved `image.png` for a `jobId` |
+| `/api/image` | GET | Serve saved `image.png` or `video.mp4` for a `jobId` |
 | `/api/history` | GET | List runs from `outputs/**/metadata.json` |
 | `/api/reveal` | GET | Reveal blurred preview metadata for a run |
 | `/api/workflow-setup` | GET | Validate `RH_WORKFLOW_ID` and list editable workflow nodes |
@@ -134,10 +134,12 @@ runninghub-app/
 │   ├── checkpoints/        # symlink to your model dir (do not scan)
 │   └── workflows/          # script-generated workflows (scripts/generate-nsfw-workflows.js) + video/
 ├── .plans/<planId>.json    # gitignored; plan TTL ~5 min
-└── outputs/YYYY-MM-DD/<jobId>/
-    ├── metadata.json       # status, prompts, route, usage
-    ├── plan.json           # full plan snapshot
-    └── image.png           # after SUCCESS
+└── outputs/nsfw/
+    ├── images/<jobId>/{metadata.json, plan.json, image.png}   # image jobs
+    ├── video/<jobId>/{metadata.json, plan.json, video.mp4}    # video jobs
+    └── {images,video}/raw/                                    # ComfyUI raw save files
+
+Legacy `outputs/YYYY-MM-DD/<jobId>/` dirs are still read by history.
 ```
 
 `outputs/` is gitignored. You may use a **symlink** to external storage (e.g. exFAT) — `listHistory` and job hydration skip macOS `._*` AppleDouble junk so `/api/status` and `/api/history` keep working after a dev-server restart.
