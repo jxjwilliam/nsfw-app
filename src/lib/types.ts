@@ -21,7 +21,7 @@ export type PlanRequest = {
   qualityTier: QualityTier
 }
 
-export type ApiMode = 'standard' | 'comfy'
+export type ApiMode = 'standard' | 'comfy' | 'local-comfy'
 
 export type PlanSnapshot = {
   planId: string
@@ -37,6 +37,7 @@ export type PlanSnapshot = {
     fieldName: string
     fieldValue: string
   }>
+  localGraph?: Record<string, unknown>
   params: {
     prompt: string
     aspectRatio: string
