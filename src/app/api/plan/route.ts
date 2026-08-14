@@ -50,15 +50,20 @@ export async function POST(req: Request) {
     const plan = await createPlan(request)
     return NextResponse.json(plan)
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'plan failed'
-    const status = message.includes('Enterprise-Shared')
-      ? 403
-      : message.includes('RH_API_KEY') ||
-          message.includes('price previews failed')
-        ? 503
-        : message.includes('No NSFW')
-          ? 422
-          : 502
+    const raw = e instanceof Error ? e.message : 'plan failed'
+    const message = raw.startsWith('LocalComfy:')
+      ? raw.slice('LocalComfy:'.length).trim()
+      : raw
+    const status = raw.startsWith('LocalComfy:')
+      ? 503
+      : message.includes('Enterprise-Shared')
+        ? 403
+        : message.includes('RH_API_KEY') ||
+            message.includes('price previews failed')
+          ? 503
+          : message.includes('No NSFW')
+            ? 422
+            : 502
 
     return NextResponse.json({ error: message }, { status })
   }

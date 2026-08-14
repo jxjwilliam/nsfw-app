@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import type { ModelEntry, PlanRequest, QualityTier, Style } from './types'
 import { pricePreview, type SubmitBody } from './runninghub'
 import { createComfyPlan } from './comfy-plan'
+import { createLocalPlan } from './local-plan'
 import { savePlan } from './plans'
 import { isWorkflowModeEnabled } from './workflow-config'
 
@@ -77,6 +78,10 @@ function buildReason(
 }
 
 export async function createPlan(request: PlanRequest) {
+  if (process.env.BACKEND?.trim() === 'local') {
+    return createLocalPlan(request)
+  }
+
   if (isWorkflowModeEnabled()) {
     return createComfyPlan(request)
   }

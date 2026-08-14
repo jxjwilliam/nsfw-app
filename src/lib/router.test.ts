@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { enhancePrompt, rankCandidates } from './router'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createPlan, enhancePrompt, rankCandidates } from './router'
+import { createLocalPlan } from './local-plan'
 import type { ModelEntry } from './types'
+
+vi.mock('./local-plan', () => ({ createLocalPlan: vi.fn() }))
 
 describe('enhancePrompt', () => {
   it('appends realistic suffix', () => {
@@ -81,5 +84,31 @@ describe('rankCandidates', () => {
       'medium'
     )
     expect(ranked2[0].modelId).toBe('b')
+  })
+})
+
+describe('createPlan backend switch', () => {
+  const prev = process.env.BACKEND
+  const mockedCreate = vi.mocked(createLocalPlan)
+
+  beforeEach(() => {
+    mockedCreate.mockReset()
+    mockedCreate.mockResolvedValue({} as never)
+    process.env.BACKEND = 'local'
+  })
+
+  afterEach(() => {
+    if (prev === undefined) delete process.env.BACKEND
+    else process.env.BACKEND = prev
+  })
+
+  it('delegates to createLocalPlan when BACKEND=local', async () => {
+    await createPlan({
+      prompt: 'test girl',
+      style: 'hentai',
+      aspectRatio: '1:1',
+      qualityTier: 'high',
+    })
+    expect(mockedCreate).toHaveBeenCalledTimes(1)
   })
 })
