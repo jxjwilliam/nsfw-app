@@ -11,4 +11,5 @@ outputs
 outputs/
 prompts/
 logs/
-checkpointstsconfig.tsbuildinfo
+checkpoints
+tsconfig.tsbuildinfo
