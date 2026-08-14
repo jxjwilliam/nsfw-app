@@ -65,6 +65,110 @@ export function stepsForTier(spec: CheckpointSpec, tier: QualityTier): number {
   return Math.max(4, steps)
 }
 
+export const VIDEO_DEFAULT_CKPT = 'realisticVisionV51_v51VAE.safetensors'
+export const VIDEO_DEFAULT_MOTION = 'mm_sd_v15_v2.ckpt'
+const VIDEO_PROMPT_PREFIX = 'masterpiece, best quality, photorealistic, '
+const VIDEO_NEGATIVE_EXTRA = 'static, no motion, flickering, jumpy motion, lowres'
+const VIDEO_FPS = 8
+
+const VIDEO_TIER: Record<QualityTier, { frames: number; steps: number }> = {
+  low: { frames: 16, steps: 16 },
+  medium: { frames: 24, steps: 20 },
+  high: { frames: 32, steps: 24 },
+}
+
+export function resolveVideoDimensions(aspectRatio: string): {
+  width: number
+  height: number
+} {
+  if (aspectRatio === '1:1') return { width: 512, height: 512 }
+  if (['9:16', '2:3', '3:4'].includes(aspectRatio)) {
+    return { width: 512, height: 768 }
+  }
+  return { width: 768, height: 512 }
+}
+
+function resolveVideoCkpt(): string {
+  return process.env.LOCAL_VIDEO_CKPT?.trim() || VIDEO_DEFAULT_CKPT
+}
+
+function resolveVideoMotion(): string {
+  return process.env.LOCAL_VIDEO_MOTION?.trim() || VIDEO_DEFAULT_MOTION
+}
+
+export function buildLocalVideoWorkflow(
+  request: PlanRequest,
+  enhancedPrompt: string
+): Record<string, unknown> {
+  const ckpt = resolveVideoCkpt()
+  const motion = resolveVideoMotion()
+  const { width, height } = resolveVideoDimensions(request.aspectRatio)
+  const { frames, steps } = VIDEO_TIER[request.qualityTier]
+  const seed = Math.floor(Math.random() * 2 ** 32)
+  const negative = [DEFAULT_NEGATIVE, VIDEO_NEGATIVE_EXTRA].join(', ')
+
+  return {
+    '3': {
+      class_type: 'KSampler',
+      inputs: {
+        scheduler: 'karras',
+        negative: ['8', 0],
+        denoise: 1,
+        latent_image: ['5', 0],
+        seed,
+        cfg: 7.5,
+        sampler_name: 'dpmpp_2m',
+        model: ['6', 0],
+        positive: ['7', 0],
+        steps,
+      },
+    },
+    '4': {
+      class_type: 'CheckpointLoaderSimple',
+      inputs: { ckpt_name: ckpt },
+    },
+    '5': {
+      class_type: 'EmptyLatentImage',
+      inputs: { batch_size: frames, width, height },
+    },
+    '6': {
+      class_type: 'ADE_AnimateDiffLoaderGen1',
+      inputs: {
+        model: ['4', 0],
+        model_name: motion,
+        beta_schedule: 'sqrt_linear (AnimateDiff)',
+      },
+    },
+    '7': {
+      class_type: 'CLIPTextEncode',
+      inputs: {
+        text: `${VIDEO_PROMPT_PREFIX}${enhancedPrompt}`,
+        clip: ['4', 1],
+      },
+    },
+    '8': {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: negative, clip: ['4', 1] },
+    },
+    '9': {
+      class_type: 'VAEDecode',
+      inputs: { vae: ['4', 2], samples: ['3', 0] },
+    },
+    '10': {
+      class_type: 'VHS_VideoCombine',
+      inputs: {
+        images: ['9', 0],
+        frame_rate: VIDEO_FPS,
+        loop_count: 0,
+        filename_prefix: 'nsfw/video/raw/nsfw-video',
+        format: 'video/h264-mp4',
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  }
+}
+
 export function buildLocalWorkflow(
   request: PlanRequest,
   enhancedPrompt: string
@@ -116,7 +220,7 @@ export function buildLocalWorkflow(
     '9': {
       class_type: 'SaveImage',
       inputs: {
-        filename_prefix: `nsfw-app-${request.style}`,
+        filename_prefix: `nsfw/images/raw/nsfw-app-${request.style}`,
         images: ['37', 0],
       },
     },
@@ -128,10 +232,46 @@ export async function createLocalPlan(
 ): Promise<PlanSnapshot> {
   await pingComfy()
 
-  const spec = resolveCheckpoint(request.style)
   const enhanced = enhancePrompt(request.prompt, request.style)
-  const graph = buildLocalWorkflow(request, enhanced)
   const planId = randomUUID()
+
+  if ((request.mediaType ?? 'image') === 'video') {
+    const ckpt = resolveVideoCkpt()
+    const motion = resolveVideoMotion()
+    const graph = buildLocalVideoWorkflow(request, enhanced)
+    const { frames, steps } = VIDEO_TIER[request.qualityTier]
+    const { width, height } = resolveVideoDimensions(request.aspectRatio)
+    const seconds = (frames / VIDEO_FPS).toFixed(1)
+
+    const snapshot: PlanSnapshot = {
+      planId,
+      createdAt: new Date().toISOString(),
+      request,
+      mediaType: 'video',
+      mode: 'local-comfy',
+      route: 'local/comfyui',
+      modelId: ckpt,
+      modelLabel: `Local AnimateDiff (${ckpt.replace('.safetensors', '')} + ${motion.replace('.ckpt', '')})`,
+      localGraph: graph,
+      params: {
+        prompt: `${VIDEO_PROMPT_PREFIX}${enhanced}`.trim(),
+        aspectRatio: request.aspectRatio,
+        resolution: `${width}x${height}`,
+        quality: request.qualityTier,
+      },
+      originalPrompt: request.prompt,
+      estimatedPrice: 0,
+      currency: 'CNY',
+      reason: `${request.style} + ${request.qualityTier} → local AnimateDiff: ${frames} frames @ ${VIDEO_FPS}fps (~${seconds}s), ${steps} steps, ${width}x${height} — no cloud content filter, no cost`,
+      alternatives: [],
+    }
+
+    await savePlan(snapshot)
+    return snapshot
+  }
+
+  const spec = resolveCheckpoint(request.style)
+  const graph = buildLocalWorkflow(request, enhanced)
 
   const snapshot: PlanSnapshot = {
     planId,
