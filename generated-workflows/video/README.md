@@ -4,29 +4,56 @@
 
 | File | Type | Description | Recommended for 18GB |
 |------|------|-------------|----------------------|
-| `animatediff_t2v_nsfw_starter.json` | Text-to-Video | AnimateDiff + your existing SD checkpoints | ✅ Best starting point |
+| `animatediff_t2v_nsfw_starter.json` | Text-to-Video | AnimateDiff + SD1.5 checkpoint (UI format) | ✅ Best starting point |
+| `animatediff_t2v_nsfw_starter.api.json` | Text-to-Video | Same workflow in **API format** — validated & working (SD1.5 + 16 frames) | ✅ |
 | `animatediff_i2v_nsfw_starter.json` | Image-to-Video | AnimateDiff img2vid (load image as first frame) | ✅ |
 | (next) `ltx_video_t2v_basic.json` | Text-to-Video | LTX-Video 2B distilled | ⚠️ Use low res + frames |
 
-## Quick Start (AnimateDiff)
+## Scripted generation (recommended)
 
-1. Install custom nodes via ComfyUI Manager:
-   - **ComfyUI-AnimateDiff-Evolved**
-   - **ComfyUI-VideoHelperSuite**
+`scripts/generate-animatediff-video.js` builds, submits, polls, and reports the
+finished mp4 — no manual workflow editing:
 
-2. Download motion module:
-   - `mm_sd_v15_v2.ckpt` → put into `ComfyUI/models/animatediff_models/`
-   - (or newer v3 motion modules)
+```bash
+# default: the validated NSFW starter (RV V5.1, 512×512, 16 frames @ 8fps)
+node scripts/generate-animatediff-video.js
 
-3. Use an **SD 1.5** checkpoint for best memory efficiency on 18GB  
-   (Pony V6 XL is SDXL — it can work but uses more memory. Prefer SD1.5 NSFW models first.)
+# custom prompt / size / frames, and copy the mp4 to ./outputs
+node scripts/generate-animatediff-video.js \
+  --prompt="a woman dancing in a bedroom" \
+  --width=512 --height=768 --frames=16 --steps=24 \
+  --seed=42 --out=./outputs
+```
 
-4. Load the `.json` workflow → set your checkpoint → Queue Prompt.
+All options: `--prompt --negative --ckpt --motion --frames --width --height
+--steps --cfg --fps --prefix --seed --out --timeout` (see the script header).
+`COMFYUI_URL` env overrides `http://localhost:8188`.
 
-5. Launch ComfyUI with:
-   ```bash
-   python main.py --force-fp16 --lowvram
-   ```
+## Prerequisites (all already installed)
+
+- Custom nodes: **ComfyUI-AnimateDiff-Evolved**, **ComfyUI-VideoHelperSuite**
+- Motion module: `mm_sd_v15_v2.ckpt` → `ComfyUI/models/animatediff_models/`
+- **SD1.5** checkpoint (SDXL checkpoints are incompatible with `mm_sd_v15`).
+  Verified: `realisticVisionV51_v51VAE.safetensors` (Realistic Vision V5.1,
+  downloaded from Civitai model 130072). RV V6 (`realisticVisionV60B1`) is
+  **SDXL** — will fail validation.
+
+## Gotchas (learned the hard way)
+
+- **AppleDouble files break VHS**: on exFAT drives, macOS writes `._*.json`
+  sidecars. VHS's `os.scandir` reads them as config and crashes with
+  `'utf-8' codec can't decode byte ...`. If you see that, delete
+  `custom_nodes/comfyui-videohelpersuite/video_formats/._*.json`.
+- **AnimateDiff-Evolved v2 schema**: the loader input is `model_name`
+  (not `motion_model`) and there is no `apply_mm_groupnorm_hack` input.
+- **Frames = latent batch**: `EmptyLatentImage batch_size` is the frame count;
+  `1` yields a 1-frame "video".
+
+## Quick Start (UI format)
+
+1. Load `animatediff_t2v_nsfw_starter.json` in ComfyUI.
+2. Set your SD1.5 checkpoint in Load Checkpoint; fix `batch_size` (frames).
+3. Queue Prompt. Launch with `python main.py --force-fp16 --lowvram`.
 
 ## Recommended Settings (18GB)
 
