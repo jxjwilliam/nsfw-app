@@ -112,3 +112,58 @@ describe('createPlan backend switch', () => {
     expect(mockedCreate).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('createPlan video guard', () => {
+  const prevBackend = process.env.BACKEND
+  const prevWorkflow = process.env.RH_WORKFLOW_ID
+  const mockedCreate = vi.mocked(createLocalPlan)
+
+  beforeEach(() => {
+    mockedCreate.mockReset()
+    mockedCreate.mockResolvedValue({} as never)
+    delete process.env.BACKEND
+    delete process.env.RH_WORKFLOW_ID
+  })
+
+  afterEach(() => {
+    if (prevBackend === undefined) delete process.env.BACKEND
+    else process.env.BACKEND = prevBackend
+    if (prevWorkflow === undefined) delete process.env.RH_WORKFLOW_ID
+    else process.env.RH_WORKFLOW_ID = prevWorkflow
+  })
+
+  const baseReq = {
+    prompt: 'test girl',
+    style: 'hentai' as const,
+    aspectRatio: '9:16',
+    qualityTier: 'high' as const,
+  }
+
+  it('rejects video when BACKEND is not local', async () => {
+    await expect(
+      createPlan({ ...baseReq, mediaType: 'video' })
+    ).rejects.toThrow('Video generation requires BACKEND=local')
+    expect(mockedCreate).not.toHaveBeenCalled()
+  })
+
+  it('rejects video in workflow mode', async () => {
+    process.env.RH_WORKFLOW_ID = '123'
+    await expect(
+      createPlan({ ...baseReq, mediaType: 'video' })
+    ).rejects.toThrow('Video generation requires BACKEND=local')
+  })
+
+  it('passes mediaType through to createLocalPlan when local', async () => {
+    process.env.BACKEND = 'local'
+    await createPlan({ ...baseReq, mediaType: 'video' })
+    expect(mockedCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: 'video' })
+    )
+  })
+
+  it('treats missing mediaType as image and delegates locally', async () => {
+    process.env.BACKEND = 'local'
+    await createPlan(baseReq)
+    expect(mockedCreate).toHaveBeenCalledTimes(1)
+  })
+})

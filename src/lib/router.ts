@@ -78,6 +78,13 @@ function buildReason(
 }
 
 export async function createPlan(request: PlanRequest) {
+  const mediaType = request.mediaType ?? 'image'
+  if (mediaType === 'video' && process.env.BACKEND?.trim() !== 'local') {
+    throw new Error(
+      'Video generation requires BACKEND=local (AnimateDiff runs on your local ComfyUI). Set BACKEND=local in .env.local and restart the dev server.'
+    )
+  }
+
   if (process.env.BACKEND?.trim() === 'local') {
     return createLocalPlan(request)
   }

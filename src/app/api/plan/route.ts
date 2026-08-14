@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { createPlan } from '@/lib/router'
-import type { PlanRequest, QualityTier, Style } from '@/lib/types'
+import type { MediaType, PlanRequest, QualityTier, Style } from '@/lib/types'
 
 const styles: Style[] = ['anime', 'realistic', 'hentai', 'hassaku']
 const tiers: QualityTier[] = ['low', 'medium', 'high']
@@ -12,6 +12,12 @@ function isStyle(s: unknown): s is Style {
 
 function isTier(t: unknown): t is QualityTier {
   return typeof t === 'string' && tiers.includes(t as QualityTier)
+}
+
+const mediaTypes: MediaType[] = ['image', 'video']
+
+function isMediaType(m: unknown): m is MediaType {
+  return typeof m === 'string' && mediaTypes.includes(m as MediaType)
 }
 
 export async function POST(req: Request) {
@@ -39,12 +45,17 @@ export async function POST(req: Request) {
     if (!isTier(qualityTier)) {
       return NextResponse.json({ error: 'invalid qualityTier' }, { status: 400 })
     }
+    const mediaType = body.mediaType === undefined ? 'image' : body.mediaType
+    if (!isMediaType(mediaType)) {
+      return NextResponse.json({ error: 'invalid mediaType' }, { status: 400 })
+    }
 
     const request: PlanRequest = {
       prompt,
       style,
       aspectRatio,
       qualityTier,
+      mediaType,
     }
 
     const plan = await createPlan(request)
@@ -56,8 +67,10 @@ export async function POST(req: Request) {
       : raw
     const status = raw.startsWith('LocalComfy:')
       ? 503
-      : message.includes('Enterprise-Shared')
-        ? 403
+      : message.startsWith('Video generation requires')
+        ? 400
+        : message.includes('Enterprise-Shared')
+          ? 403
         : message.includes('RH_API_KEY') ||
             message.includes('price previews failed')
           ? 503
