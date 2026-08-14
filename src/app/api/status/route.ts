@@ -7,6 +7,7 @@ import {
   setJob,
 } from '@/lib/jobs'
 import { finalizeFailed, finalizeSuccess } from '@/lib/output-store'
+import { buildViewUrl, getHistoryResult } from '@/lib/local-comfy'
 import { queryComfyOutputs } from '@/lib/runninghub-comfy'
 import { queryTask, type QueryResponse } from '@/lib/runninghub'
 
@@ -89,6 +90,40 @@ export async function GET(req: Request) {
         { error: 'metadata missing', status: 'FAILED' as const },
         { status: 500 }
       )
+    }
+
+    const isLocal = mFinal.apiMode === 'local-comfy'
+
+    if (isLocal) {
+      const local = await getHistoryResult(job.taskId)
+
+      if (local.status === 'FAILED') {
+        await finalizeFailed(job.outputDir, mFinal, local.errorMessage)
+        job.status = 'FAILED'
+        job.errorMessage = local.errorMessage
+        setJob(job)
+        return NextResponse.json({
+          status: 'FAILED' as const,
+          errorMessage: job.errorMessage,
+        })
+      }
+
+      if (local.status === 'SUCCESS') {
+        await finalizeSuccess(job.outputDir, mFinal, buildViewUrl(local.image))
+        job.status = 'SUCCESS'
+        job.errorMessage = undefined
+        setJob(job)
+        return NextResponse.json({
+          status: 'SUCCESS' as const,
+          imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+          outputPath: job.outputDir,
+        })
+      }
+
+      return NextResponse.json({
+        status: 'RUNNING' as const,
+        progress: Math.min(95, Math.round(((pollCount + 1) / MAX_POLLS) * 100)),
+      })
     }
 
     const isComfy = mFinal.apiMode === 'comfy'

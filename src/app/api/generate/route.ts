@@ -12,6 +12,7 @@ import {
   formatComfyUiError,
 } from '@/lib/runninghub-errors'
 import { submitComfyTask } from '@/lib/runninghub-comfy'
+import { submitPrompt as submitLocalPrompt } from '@/lib/local-comfy'
 import { submitTask } from '@/lib/runninghub'
 import type { RunMetadata } from '@/lib/types'
 
@@ -32,7 +33,9 @@ export async function POST(req: Request) {
 
     let taskId: string
 
-    if (plan.mode === 'comfy' && plan.workflowId && plan.nodeInfoList) {
+    if (plan.mode === 'local-comfy' && plan.localGraph) {
+      taskId = await submitLocalPrompt(plan.localGraph)
+    } else if (plan.mode === 'comfy' && plan.workflowId && plan.nodeInfoList) {
       const comfy = await submitComfyTask(plan.workflowId, plan.nodeInfoList)
       taskId = comfy.taskId
     } else {
@@ -71,15 +74,20 @@ export async function POST(req: Request) {
     })
   } catch (e) {
     const raw = e instanceof Error ? e.message : 'generate failed'
-    const message =
-      raw.startsWith('ComfyUI') ? formatComfyUiError(raw) : raw
+    const isLocal = raw.startsWith('LocalComfy:')
+    const message = isLocal
+      ? raw.slice('LocalComfy:'.length).trim()
+      : raw.startsWith('ComfyUI')
+        ? formatComfyUiError(raw)
+        : raw
     const hint =
-      message.includes('RH_API_KEY') ?
-        ` — configure RH_API_KEY in .env.local`
-      : ''
+      message.includes('RH_API_KEY') && !isLocal
+        ? ` — configure RH_API_KEY in .env.local`
+        : ''
 
-    const status =
-      message.includes('RH_API_KEY')
+    const status = isLocal
+      ? 502
+      : message.includes('RH_API_KEY')
         ? 503
         : message.includes('submit failed') || raw.startsWith('ComfyUI')
           ? comfyErrorStatus(raw)
