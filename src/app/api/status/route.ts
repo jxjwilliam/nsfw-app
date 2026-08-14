@@ -14,6 +14,7 @@ import { queryTask, type QueryResponse } from '@/lib/runninghub'
 export const maxDuration = 120
 
 const MAX_POLLS = 60
+const MAX_POLLS_VIDEO = 180
 
 function isTerminalFailure(q: QueryResponse): boolean {
   if (q.results?.[0]?.url) return false
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       status: 'SUCCESS' as const,
       imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+      mediaType: meta?.mediaType ?? 'image',
       outputPath: job.outputDir,
       usage: meta?.actualUsage,
     })
@@ -57,7 +59,8 @@ export async function GET(req: Request) {
   const meta = getMeta(jobId)
 
   try {
-    if (pollCount >= MAX_POLLS) {
+    const maxPolls = meta?.mediaType === 'video' ? MAX_POLLS_VIDEO : MAX_POLLS
+    if (pollCount >= maxPolls) {
       const m = meta
       if (!m) {
         return NextResponse.json(
@@ -69,7 +72,7 @@ export async function GET(req: Request) {
       await finalizeFailed(
         job.outputDir,
         m,
-        'Timed out after maximum polling attempts (6 minutes)'
+        `Timed out after maximum polling attempts (~${Math.round((maxPolls * 8) / 60)} minutes)`
       )
       job.status = 'FAILED'
       job.errorMessage =
@@ -116,13 +119,14 @@ export async function GET(req: Request) {
         return NextResponse.json({
           status: 'SUCCESS' as const,
           imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+          mediaType: mFinal.mediaType ?? 'image',
           outputPath: job.outputDir,
         })
       }
 
       return NextResponse.json({
         status: 'RUNNING' as const,
-        progress: Math.min(95, Math.round(((pollCount + 1) / MAX_POLLS) * 100)),
+        progress: Math.min(95, Math.round(((pollCount + 1) / maxPolls) * 100)),
       })
     }
 
@@ -154,13 +158,14 @@ export async function GET(req: Request) {
         return NextResponse.json({
           status: 'SUCCESS' as const,
           imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+          mediaType: mFinal.mediaType ?? 'image',
           outputPath: job.outputDir,
         })
       }
 
       return NextResponse.json({
         status: 'RUNNING' as const,
-        progress: Math.min(95, Math.round(((pollCount + 1) / MAX_POLLS) * 100)),
+        progress: Math.min(95, Math.round(((pollCount + 1) / maxPolls) * 100)),
       })
     }
 
@@ -191,6 +196,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         status: 'SUCCESS' as const,
         imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
+        mediaType: mFinal.mediaType ?? 'image',
         outputPath: job.outputDir,
         usage: q.usage ?? undefined,
       })
@@ -198,7 +204,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       status: 'RUNNING' as const,
-      progress: Math.min(95, Math.round(((pollCount + 1) / MAX_POLLS) * 100)),
+      progress: Math.min(95, Math.round(((pollCount + 1) / maxPolls) * 100)),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'query failed'

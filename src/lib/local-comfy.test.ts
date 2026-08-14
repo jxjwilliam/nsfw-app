@@ -112,4 +112,72 @@ describe('getHistoryResult', () => {
       errorMessage: 'OOM',
     })
   })
+
+  it('returns a gifs ref when only video output exists', async () => {
+    fakeFetch(async () => ({
+      p1: {
+        status: { status_str: 'success' },
+        outputs: {
+          '10': {
+            gifs: [
+              {
+                filename: 'nsfw-video_00001.mp4',
+                subfolder: 'nsfw/video/raw',
+                type: 'output',
+              },
+            ],
+          },
+        },
+      },
+    }))
+    const r = await getHistoryResult('p1', BASE)
+    expect(r).toEqual({
+      status: 'SUCCESS',
+      image: {
+        filename: 'nsfw-video_00001.mp4',
+        subfolder: 'nsfw/video/raw',
+        type: 'output',
+      },
+    })
+  })
+
+  it('prefers images over gifs when both exist', async () => {
+    fakeFetch(async () => ({
+      p1: {
+        status: { status_str: 'success' },
+        outputs: {
+          '9': {
+            images: [
+              { filename: 'img_00001.png', subfolder: '', type: 'output' },
+            ],
+            gifs: [
+              { filename: 'vid_00001.mp4', subfolder: '', type: 'output' },
+            ],
+          },
+        },
+      },
+    }))
+    const r = await getHistoryResult('p1', BASE)
+    expect(r.status).toBe('SUCCESS')
+    if (r.status === 'SUCCESS') {
+      expect(r.image.filename).toBe('img_00001.png')
+    }
+  })
+
+  it('fails when success produced no output files', async () => {
+    fakeFetch(async () => ({
+      p1: { status: { status_str: 'success' }, outputs: {} },
+    }))
+    const r = await getHistoryResult('p1', BASE)
+    expect(r.status).toBe('FAILED')
+    if (r.status === 'FAILED') {
+      expect(r.errorMessage).toContain('no output file')
+    }
+  })
+
+  it('reports RUNNING when no status yet', async () => {
+    fakeFetch(async () => ({ p1: {} }))
+    const r = await getHistoryResult('p1', BASE)
+    expect(r.status).toBe('RUNNING')
+  })
 })

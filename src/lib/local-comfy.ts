@@ -10,6 +10,7 @@ export type ComfyImageRef = {
   type: string
 }
 
+// `image` holds an image or video ref — the name is kept for compat.
 export type ComfyHistoryResult =
   | { status: 'SUCCESS'; image: ComfyImageRef }
   | { status: 'FAILED'; errorMessage: string }
@@ -103,7 +104,10 @@ export async function getHistoryResult(
   const data = (await res.json()) as Record<
     string,
     {
-      outputs?: Record<string, { images?: ComfyImageRef[] }>
+      outputs?: Record<
+        string,
+        { images?: ComfyImageRef[]; gifs?: ComfyImageRef[] }
+      >
       status?: {
         status_str?: string
         completed?: boolean
@@ -117,12 +121,12 @@ export async function getHistoryResult(
   const s = entry.status.status_str
   if (s === 'success') {
     for (const nodeOutput of Object.values(entry.outputs ?? {})) {
-      const img = nodeOutput.images?.[0]
-      if (img) return { status: 'SUCCESS', image: img }
+      const file = nodeOutput.images?.[0] ?? nodeOutput.gifs?.[0]
+      if (file) return { status: 'SUCCESS', image: file }
     }
     return {
       status: 'FAILED',
-      errorMessage: 'LocalComfy succeeded but produced no image',
+      errorMessage: 'LocalComfy succeeded but produced no output file',
     }
   }
   if (s === 'error') {

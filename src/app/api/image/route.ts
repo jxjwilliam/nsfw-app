@@ -6,9 +6,10 @@ const OUTPUTS_BASE =
 
 import { NextResponse } from 'next/server'
 
-import { ensureJobHydrated, getJob } from '@/lib/jobs'
+import { ensureJobHydrated, getJob, getMeta } from '@/lib/jobs'
 import { findRunByJobId } from '@/lib/output-store'
 import { fetchR2Image, isR2Enabled } from '@/lib/r2'
+import type { RunMetadata } from '@/lib/types'
 
 export async function GET(req: Request) {
   const jobId = new URL(req.url).searchParams.get('jobId')
@@ -19,8 +20,9 @@ export async function GET(req: Request) {
   await ensureJobHydrated(jobId)
 
   let dir = getJob(jobId)?.outputDir
+  let row: (RunMetadata & { outputDir: string }) | null = null
   if (!dir) {
-    const row = await findRunByJobId(jobId)
+    row = await findRunByJobId(jobId)
     dir = row?.outputDir
   }
 
@@ -42,10 +44,14 @@ export async function GET(req: Request) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
+  const meta = getMeta(jobId) ?? row ?? undefined
+  const file = meta?.videoFile ?? meta?.imageFile ?? 'image.png'
+  const contentType = file.endsWith('.mp4') ? 'video/mp4' : 'image/png'
+
   try {
-    const buf = await readFile(path.join(resolvedDir, 'image.png'))
+    const buf = await readFile(path.join(resolvedDir, file))
     return new NextResponse(buf, {
-      headers: { 'Content-Type': 'image/png' },
+      headers: { 'Content-Type': contentType },
     })
   } catch {
     if (isR2Enabled()) {
