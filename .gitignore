@@ -2,7 +2,6 @@
 .env*.local
 node_modules/
 .next/
-outputs/
 .plans/
 .DS_Store
 .obsidian/
@@ -13,3 +12,4 @@ prompts/
 logs/
 checkpoints
 tsconfig.tsbuildinfo
+.omo/
