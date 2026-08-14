@@ -75,6 +75,7 @@ The app chooses the backend from `.env.local`:
 | Mode | When | RunningHub API | Content safety | Price on plan card |
 |------|------|----------------|----------------|--------------------|
 | **ComfyUI workflow** | `RH_WORKFLOW_ID` is set | `POST /task/openapi/create` + poll `outputs` | Uses **your** checkpoint/workflow on RunningHub (no G-2 text filter) | Shown as ¥0 (billing on RunningHub) |
+| **Local ComfyUI** | `BACKEND=local` | Local `POST /api/prompt` + history polling | Uses **your** checkpoints on your machine (no G-2 filter) | Shown as ¥0 |
 | **Standard Model** | `RH_WORKFLOW_ID` empty | `POST /openapi/v2/.../text-to-image` + `query` | G-2 **server-side** review (error `1501` on explicit prompts) | Live **price-preview** per model |
 
 **ComfyUI setup:** import [`workflows/sdxl-txt2img-api.json`](workflows/sdxl-txt2img-api.json) on RunningHub, then set `RH_WORKFLOW_ID` — see [ComfyUI workflow setup](#comfyui-workflow-setup-recommended-for-nsfw) and [`workflows/README.md`](workflows/README.md).
@@ -134,6 +135,9 @@ cp .env.example .env.local
 # Edit .env.local: set RH_API_KEY from RunningHub API console (server-side only).
 # Optional: PORT=4000 (default dev port; change in .env.local).
 # Optional: set RH_WORKFLOW_ID after importing the ComfyUI workflow (see below).
+# Optional local mode: set BACKEND=local (see the Local ComfyUI backend row
+# above and docs/superpowers/specs/oc_2026-08-14-local-comfyui-backend-design.md).
+# Start ComfyUI first (`make start`), then plan cards show the local checkpoint.
 
 npm install
 npm run dev
