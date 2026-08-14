@@ -1,5 +1,6 @@
 export type Style = 'anime' | 'realistic' | 'hentai' | 'hassaku'
 export type QualityTier = 'low' | 'medium' | 'high'
+export type MediaType = 'image' | 'video'
 
 export type ModelEntry = {
   id: string
@@ -19,6 +20,7 @@ export type PlanRequest = {
   style: Style
   aspectRatio: string
   qualityTier: QualityTier
+  mediaType?: MediaType
 }
 
 export type ApiMode = 'standard' | 'comfy' | 'local-comfy'
@@ -28,6 +30,7 @@ export type PlanSnapshot = {
   createdAt: string
   request: PlanRequest
   mode?: ApiMode
+  mediaType?: MediaType
   route: string
   modelId: string
   modelLabel: string
@@ -82,6 +85,8 @@ export type RunMetadata = {
   estimatedPrice: number
   status: 'RUNNING' | 'SUCCESS' | 'FAILED'
   imageFile?: string
+  videoFile?: string
+  mediaType?: MediaType
   errorMessage?: string
   actualUsage?: Record<string, unknown>
   /** Set when the image was generated but the R2 mirror upload failed. */

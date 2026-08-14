@@ -1,7 +1,7 @@
 import { mkdir, writeFile, readFile, readdir } from 'fs/promises'
 import type { Dirent } from 'fs'
 import path from 'path'
-import type { PlanSnapshot, RunMetadata } from './types'
+import type { MediaType, PlanSnapshot, RunMetadata } from './types'
 import { downloadImage } from './runninghub'
 import { isR2Enabled, uploadR2Image } from './r2'
 
@@ -16,11 +16,17 @@ function isVisibleEntry(name: string): boolean {
   return !name.startsWith('.')
 }
 
+const DAY_DIR_RE = /^\d{4}-\d{2}-\d{2}$/
+
 async function listDayDirs(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true })
   return entries
-    .filter((e: Dirent) => e.isDirectory() && isVisibleEntry(e.name))
+    .filter((e: Dirent) => e.isDirectory() && DAY_DIR_RE.test(e.name))
     .map((e) => e.name)
+}
+
+function mediaSubdir(mediaType: MediaType): string {
+  return mediaType === 'video' ? 'video' : 'images'
 }
 
 async function listJobDirs(dayPath: string): Promise<string[]> {
@@ -30,17 +36,22 @@ async function listJobDirs(dayPath: string): Promise<string[]> {
     .map((e) => e.name)
 }
 
-export function outputDirForJob(jobId: string): string {
-  const day = new Date().toISOString().slice(0, 10)
-  return path.join(outputsRoot(), day, jobId)
+export function outputDirForJob(
+  jobId: string,
+  mediaType: MediaType = 'image',
+  root = outputsRoot()
+): string {
+  return path.join(root, 'nsfw', mediaSubdir(mediaType), jobId)
 }
 
 export async function initJobDir(
   jobId: string,
   plan: PlanSnapshot,
-  taskId: string
+  taskId: string,
+  root = outputsRoot()
 ): Promise<string> {
-  const dir = outputDirForJob(jobId)
+  const mediaType = plan.mediaType ?? 'image'
+  const dir = outputDirForJob(jobId, mediaType, root)
   await mkdir(dir, { recursive: true })
   await writeFile(path.join(dir, 'plan.json'), JSON.stringify(plan, null, 2))
   const meta: RunMetadata = {
@@ -48,6 +59,7 @@ export async function initJobDir(
     taskId,
     createdAt: new Date().toISOString(),
     apiMode: plan.mode ?? (plan.route.startsWith('comfyui') ? 'comfy' : 'standard'),
+    mediaType,
     prompt: plan.originalPrompt,
     enhancedPrompt: plan.params.prompt,
     style: plan.request.style,
@@ -65,19 +77,25 @@ export async function initJobDir(
 export async function finalizeSuccess(
   dir: string,
   meta: RunMetadata,
-  imageUrl: string,
+  fileUrl: string,
   usage?: Record<string, unknown> | null
 ): Promise<void> {
-  await mkdir(dir, { recursive: true })
-  const buf = await downloadImage(imageUrl)
-  await writeFile(path.join(dir, 'image.png'), buf)
+  const buf = await downloadImage(fileUrl)
+  const isVideo = meta.mediaType === 'video'
+  const file = isVideo ? 'video.mp4' : 'image.png'
+  await writeFile(path.join(dir, file), buf)
   meta.status = 'SUCCESS'
-  meta.imageFile = 'image.png'
+  if (isVideo) {
+    meta.videoFile = file
+  } else {
+    meta.imageFile = file
+  }
   meta.actualUsage = usage ?? undefined
   await writeFile(path.join(dir, 'metadata.json'), JSON.stringify(meta, null, 2))
 
   // Cloud (Vercel) only: mirror the image to R2 so the run survives a cold
-  // start wiping /tmp. Local dev never reaches this branch.
+  // start wiping /tmp. Local dev never reaches this branch. (Video jobs are
+  // local-only, so the mirror effectively applies to images only.)
   if (isR2Enabled()) {
     let persistError: string | undefined
     try {
@@ -107,29 +125,50 @@ export async function finalizeFailed(
   await writeFile(path.join(dir, 'metadata.json'), JSON.stringify(meta, null, 2))
 }
 
-export async function listHistory(
-  limit = 50
+async function scanJobDir(
+  dir: string
+): Promise<(RunMetadata & { outputDir: string }) | null> {
+  try {
+    const raw = await readFile(path.join(dir, 'metadata.json'), 'utf-8')
+    const meta = JSON.parse(raw) as RunMetadata
+    return { ...meta, outputDir: dir }
+  } catch {
+    return null
+  }
+}
+
+async function scanParent(
+  parentPath: string
 ): Promise<Array<RunMetadata & { outputDir: string }>> {
-  const root = outputsRoot()
+  const out: Array<RunMetadata & { outputDir: string }> = []
+  let names: string[]
+  try {
+    names = await listJobDirs(parentPath)
+  } catch {
+    return out
+  }
+  for (const name of names) {
+    if (name === 'raw') continue
+    const hit = await scanJobDir(path.join(parentPath, name))
+    if (hit) out.push(hit)
+  }
+  return out
+}
+
+export async function listHistory(
+  limit = 50,
+  root = outputsRoot()
+): Promise<Array<RunMetadata & { outputDir: string }>> {
   const entries: Array<RunMetadata & { outputDir: string }> = []
+  entries.push(...(await scanParent(path.join(root, 'nsfw', 'images'))))
+  entries.push(...(await scanParent(path.join(root, 'nsfw', 'video'))))
   try {
     const days = await listDayDirs(root)
     for (const day of days) {
-      const dayPath = path.join(root, day)
-      const jobs = await listJobDirs(dayPath)
-      for (const jobId of jobs) {
-        const metaPath = path.join(dayPath, jobId, 'metadata.json')
-        try {
-          const raw = await readFile(metaPath, 'utf-8')
-          const meta = JSON.parse(raw) as RunMetadata
-          entries.push({ ...meta, outputDir: path.join(dayPath, jobId) })
-        } catch {
-          /* skip */
-        }
-      }
+      entries.push(...(await scanParent(path.join(root, day))))
     }
   } catch {
-    return []
+    /* no readable root */
   }
   return entries
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -137,8 +176,22 @@ export async function listHistory(
 }
 
 /** Direct lookup — avoids scanning full history (and survives exFAT AppleDouble junk). */
-export async function findRunDirByJobId(jobId: string): Promise<string | null> {
-  const root = outputsRoot()
+export async function findRunDirByJobId(
+  jobId: string,
+  root = outputsRoot()
+): Promise<string | null> {
+  const mediaDirs = [
+    path.join(root, 'nsfw', 'images', jobId),
+    path.join(root, 'nsfw', 'video', jobId),
+  ]
+  for (const dir of mediaDirs) {
+    try {
+      await readFile(path.join(dir, 'metadata.json'), 'utf-8')
+      return dir
+    } catch {
+      /* try next */
+    }
+  }
   try {
     const days = (await listDayDirs(root)).sort().reverse()
     for (const day of days) {
