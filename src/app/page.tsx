@@ -8,7 +8,7 @@ import {
   NSFW_DEFAULTS,
   saveStoredPrefs,
 } from "@/lib/nsfw-defaults";
-import type { PlanSnapshot, QualityTier, RunMetadata, Style } from "@/lib/types";
+import type { MediaType, PlanSnapshot, QualityTier, RunMetadata, Style } from "@/lib/types";
 
 type HistoryItem = RunMetadata & { outputDir: string };
 
@@ -30,6 +30,11 @@ const QUALITIES: { value: QualityTier; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
+];
+
+const MEDIA_TYPES: { value: MediaType; label: string }[] = [
+  { value: "image", label: "Image" },
+  { value: "video", label: "Video" },
 ];
 
 const PROMPT_MAX = 20000;
@@ -129,9 +134,11 @@ export default function Home() {
   const [style, setStyle] = useState<Style>(NSFW_DEFAULTS.style);
   const [aspectRatio, setAspectRatio] = useState<string>(NSFW_DEFAULTS.aspectRatio);
   const [qualityTier, setQualityTier] = useState<QualityTier>(NSFW_DEFAULTS.qualityTier);
+  const [mediaType, setMediaType] = useState<MediaType>(NSFW_DEFAULTS.mediaType);
 
   const [plan, setPlan] = useState<PlanSnapshot | null>(null);
   const [gen, setGen] = useState<GenState>({ phase: "idle" });
+  const [doneMediaType, setDoneMediaType] = useState<MediaType | undefined>(undefined);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [pollProgress, setPollProgress] = useState<number | undefined>(undefined);
 
@@ -167,13 +174,14 @@ export default function Home() {
     setStyle(p.style);
     setAspectRatio(p.aspectRatio);
     setQualityTier(p.qualityTier);
+    setMediaType(p.mediaType);
     setPrefsReady(true);
   }, []);
 
   useEffect(() => {
     if (!prefsReady) return;
-    saveStoredPrefs({ prompt, style, aspectRatio, qualityTier });
-  }, [prefsReady, prompt, style, aspectRatio, qualityTier]);
+    saveStoredPrefs({ prompt, style, aspectRatio, qualityTier, mediaType });
+  }, [prefsReady, prompt, style, aspectRatio, qualityTier, mediaType]);
 
   useEffect(() => {
     void fetchHistory();
@@ -233,6 +241,7 @@ export default function Home() {
 
         if (status === "SUCCESS") {
           setGen({ phase: "done", jobId, status: "SUCCESS" });
+          setDoneMediaType(body.mediaType === "video" ? "video" : "image");
           setPreviewJobId(jobId);
           setBannerError(null);
           setActionError(null);
@@ -280,6 +289,7 @@ export default function Home() {
           style,
           aspectRatio,
           qualityTier,
+          mediaType,
         }),
       });
       if (!res.ok) {
@@ -290,6 +300,7 @@ export default function Home() {
       const data = (await res.json()) as PlanSnapshot;
       setPlan(data);
       setGen({ phase: "idle" });
+      setDoneMediaType(undefined);
       setPollProgress(undefined);
     } catch (e) {
       setPlan(null);
@@ -364,6 +375,10 @@ export default function Home() {
       `/api/image?jobId=${encodeURIComponent(previewJobId)}`
     : null;
 
+  const previewIsVideo =
+    previewMeta?.mediaType === "video" ||
+    (gen.phase === "done" && gen.jobId === previewJobId && doneMediaType === "video");
+
   const showRunning = gen.phase === "running";
 
   const genFailMessage =
@@ -423,7 +438,11 @@ export default function Home() {
             />
           </div>
 
-          <ChipRow label="Style" options={STYLES} value={style} onChange={setStyle} />
+          <ChipRow label="Media" options={MEDIA_TYPES} value={mediaType} onChange={setMediaType} />
+
+          {mediaType === "image" && (
+            <ChipRow label="Style" options={STYLES} value={style} onChange={setStyle} />
+          )}
 
           <ChipRowRatios
             label="Aspect ratio"
@@ -468,7 +487,8 @@ export default function Home() {
                     <option value="">Select a run…</option>
                     {history.map((h) => (
                       <option key={h.jobId} value={h.jobId}>
-                        {new Date(h.createdAt).toLocaleString()} — {h.status} — {h.modelLabel.slice(0, 24)}
+                        {new Date(h.createdAt).toLocaleString()} — {h.status} —{" "}
+                        {h.mediaType === "video" ? "video" : "image"} — {h.modelLabel.slice(0, 24)}
                         {h.modelLabel.length > 24 ? "…" : ""}
                       </option>
                     ))}
@@ -596,10 +616,19 @@ export default function Home() {
                     className="h-10 w-10 animate-spin rounded-full border-2 border-[color:var(--border)] border-t-[color:var(--accent)]"
                     aria-hidden
                   />
-                  <span>Working on your image…</span>
+                  <span>Working on your {mediaType === "video" ? "video" : "image"}…</span>
                 </div>
               )}
-              {imageSrc && (
+              {imageSrc && previewIsVideo && (
+                <video
+                  key={previewJobId ?? undefined}
+                  src={imageSrc}
+                  controls
+                  playsInline
+                  className="max-h-[min(70vh,520px)] w-full object-contain"
+                />
+              )}
+              {imageSrc && !previewIsVideo && (
                 // eslint-disable-next-line @next/next/no-img-element -- same-origin PNG from /api/image
                 <img
                   key={previewJobId ?? undefined}
@@ -634,7 +663,7 @@ export default function Home() {
                 <>
                   <a
                     href={`/api/image?jobId=${encodeURIComponent(previewJobId)}`}
-                    download={`runninghub-${previewJobId}.png`}
+                    download={`runninghub-${previewJobId}.${previewIsVideo ? "mp4" : "png"}`}
                     className="inline-flex items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
                   >
                     [ Download ]

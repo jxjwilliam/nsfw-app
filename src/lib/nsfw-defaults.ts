@@ -1,10 +1,11 @@
-import type { QualityTier, Style } from './types'
+import type { MediaType, QualityTier, Style } from './types'
 
 /** App is NSFW-only; these are the defaults on first visit and reset targets. */
 export const NSFW_DEFAULTS = {
   style: 'hentai' as Style,
   aspectRatio: '9:16',
   qualityTier: 'high' as QualityTier,
+  mediaType: 'image' as MediaType,
   prompt: '',
 } as const
 
@@ -14,6 +15,7 @@ export type StoredPrefs = {
   style: Style
   aspectRatio: string
   qualityTier: QualityTier
+  mediaType: MediaType
   prompt: string
 }
 
@@ -42,6 +44,7 @@ export function mergePrefs(stored: Partial<StoredPrefs> | null): StoredPrefs {
     style: stored?.style ?? NSFW_DEFAULTS.style,
     aspectRatio: stored?.aspectRatio ?? NSFW_DEFAULTS.aspectRatio,
     qualityTier: stored?.qualityTier ?? NSFW_DEFAULTS.qualityTier,
+    mediaType: stored?.mediaType === 'video' ? 'video' : NSFW_DEFAULTS.mediaType,
     prompt: typeof stored?.prompt === 'string' ? stored.prompt : NSFW_DEFAULTS.prompt,
   }
 }
