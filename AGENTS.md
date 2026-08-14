@@ -1,6 +1,14 @@
 # AGENTS.md
 
-Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → **confirm** → poll → save image. Two generation backends: RunningHub cloud (default) and local ComfyUI (`BACKEND=local`). Intended for local Mac use only.
+Single-user Next.js 15 app: prompt → **plan** (pick backend + cost) → **confirm** → poll → save media. Two deployment modes, same code, different env vars:
+
+- **Local** — ComfyUI + web UI + checkpoints + local workflows (`BACKEND=local`,
+  `LOCAL_COMFY_URL`, `LOCAL_CKPT_<STYLE>`); artifacts under `outputs/`
+  (SamsungT7 symlink).
+- **Remote (Vercel)** — Vercel + RunningHub + Cloudflare R2 (`RH_API_KEY`,
+  `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`); only the media file is uploaded to
+  R2 (`media-<jobId>.png`, flat key). Runbook: `docs/vercel-runninghub-deploy.md`.
 
 ## Commands
 
@@ -13,6 +21,9 @@ Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → 
 ## Backend switching (most common mistake)
 
 `.env.local` decides the backend; there is no UI toggle.
+Local vs remote is decided by where the app runs and which env vars are set:
+remote mode simply doesn't set `BACKEND=local` and adds the `R2_*` vars on
+Vercel.
 
 | Mode | Env | Flow |
 |---|---|---|
@@ -30,6 +41,13 @@ Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → 
 - `outputs/` is a **symlink to ComfyUI's output dir on the SamsungT7 exFAT drive**. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same. If the drive is unmounted, status/history break after a dev-server restart.
 - `local-comfyui/checkpoints/` is a symlink to a multi-GB model dir. **Never let Tailwind scan it**: `src/app/globals.css` must keep `@import "tailwindcss" source(none);` + `@source "../**/*.{ts,tsx,mdx}";`. A plain `@import "tailwindcss"` makes `next build` scan the symlink and hang at ~32GB memory.
 - Backend dispatch happens in `createPlan()` (`src/lib/router.ts`): `BACKEND=local` → `createLocalPlan`, else comfy-workflow or standard router.
+- `src/lib/r2.ts` — dependency-free SigV4 R2 client, gated to Vercel
+  (`VERCEL=1`) or `R2_ENABLED=true` (local dev never calls it). **The bucket
+  holds media only** (`media-<jobId>.png`, flat key): never upload
+  metadata.json, folders, or timestamps to R2. `finalizeSuccess` mirrors the
+  image; `/api/image` falls back to R2 after a cold start. Keys:
+  `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+  `R2_BUCKET_NAME` (default `nfsw`), optional `R2_ENDPOINT` / `R2_ENABLED`.
 
 ## Workflows & scripts
 
@@ -40,6 +58,9 @@ Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → 
 ## Conventions & gotchas
 
 - Semantic lowercase commit messages (`fix:`, `feat:`, `docs:`, `chore:`, `cleanup:`) — established in history.
+- R2 (remote mode) stores only the generated media file — no metadata, no
+  directories. Local `outputs/` keeps the full record; remote history is
+  per-instance only because Vercel `/tmp` is ephemeral.
 - Standard-mode prompts go through G-2 review; explicit prompts return error `1501`. Workflow and local modes bypass it.
 - RunningHub workflow errors: `810` = workflow not saved/run yet, `801` = invalid workflow ID (see README for fixes).
 - New AI-generated docs under `docs/superpowers/` use a `oc_` date prefix (`oc_YYYY-MM-DD-<name>.md`); user-authored docs (`docs/`, `local-comfyui/workflows/`, `screenshots/`) keep their names.

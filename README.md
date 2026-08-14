@@ -1,6 +1,19 @@
-# RunningHub NSFW Image Generator (local)
+# RunningHub NSFW Image Generator
 
-Single-user Next.js app: enter a prompt, **plan** a generation path (model or ComfyUI workflow + estimated cost), **confirm**, poll until the image finishes, and save artifacts under `./outputs/`. Intended for **local Mac use only** (`npm run dev`).
+Single-user Next.js app: enter a prompt, **plan** a generation path (model or ComfyUI workflow + estimated cost), **confirm**, poll until the image finishes, and save the media. One codebase, **two deployment modes** — they run with different environment variables:
+
+| Mode | Stack | Key env vars | Output |
+|------|-------|--------------|--------|
+| **Local** | ComfyUI + web UI + checkpoints + local workflows (Mac) | `BACKEND=local`, `LOCAL_COMFY_URL`, `LOCAL_CKPT_<STYLE>` | `outputs/` (SamsungT7 symlink), full records |
+| **Remote** | Vercel + RunningHub + Cloudflare R2 | `RH_API_KEY`, `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | R2 bucket `nfsw`, **media file only** (`media-<jobId>.png`) |
+
+- **Local:** `npm run dev` on port 4000, generation via your local ComfyUI at
+  `LOCAL_COMFY_URL`, using your checkpoints and `local-comfyui/workflows/`.
+  Nothing leaves the Mac.
+- **Remote:** deploy to Vercel, generate via RunningHub (ComfyUI workflow or
+  Standard Model), and persist only the media file to Cloudflare R2 — no
+  folders, no metadata.json in the bucket. See
+  [Vercel + RunningHub + R2 deploy guide](docs/vercel-runninghub-deploy.md).
 
 **Documentation**
 
@@ -11,6 +24,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 | [Local ComfyUI design spec](docs/superpowers/specs/oc_2026-08-14-local-comfyui-backend-design.md) | Current `BACKEND=local` design |
 | [Local ComfyUI build plan](docs/superpowers/plans/oc_2026-08-14-local-comfyui-backend.md) | Agent step-by-step implementation checklist |
 | [ComfyUI workflow setup](runninghub/workflows/README.md) | Import `sdxl-*.json` on RunningHub, node map, RH 810/801 fixes |
+| [Vercel + RunningHub + R2 deploy guide](docs/vercel-runninghub-deploy.md) | Remote mode: env vars, R2 bucket/token setup, storage caveats |
 
 ## App workflow
 
@@ -32,7 +46,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 2. **Plan** — server picks a route, shows label, estimated price (Standard mode), reason, and up to two alternatives.
 3. **Confirm** — server submits a RunningHub task and returns a `jobId`.
 4. **Poll** — UI calls `/api/status` every ~8s until `SUCCESS` or `FAILED` (max ~6 minutes).
-5. **View** — image served from `/api/image?jobId=...`; files also written under `outputs/YYYY-MM-DD/<jobId>/`.
+5. **View** — image served from `/api/image?jobId=...`; locally the full run is written under `outputs/YYYY-MM-DD/<jobId>/`, on Vercel only the media file is mirrored to R2.
 
 No login, no payment UI — only your RunningHub account balance is charged when you confirm.
 
@@ -128,6 +142,11 @@ runninghub-app/
 
 `outputs/` is gitignored. You may use a **symlink** to external storage (e.g. exFAT) — `listHistory` and job hydration skip macOS `._*` AppleDouble junk so `/api/status` and `/api/history` keep working after a dev-server restart.
 
+On **Vercel**, `outputs/` and `.plans/` live in ephemeral `/tmp`; on success the
+image is uploaded to R2 as `media-<jobId>.png` (nothing else) and
+`/api/image` falls back to R2 after a cold start. Metadata stays local-only in
+both modes.
+
 ## Prerequisites
 
 - Node.js 18+ (align with your Next.js 15 toolchain)
@@ -158,6 +177,11 @@ Production-style run (after build):
 npm run build
 npm run start
 ```
+
+For the **remote (Vercel + RunningHub + R2)** variant, the code is the same —
+only the environment variables differ; see
+[`docs/vercel-runninghub-deploy.md`](docs/vercel-runninghub-deploy.md) for the
+full runbook.
 
 Without `RH_API_KEY`, plan/generate routes return **503** with a message about the missing key — add it to `.env.local` and restart the dev server.
 
