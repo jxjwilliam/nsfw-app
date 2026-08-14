@@ -42,13 +42,13 @@ export function formatComfyUiError(message: string): string {
   ) {
     return (
       'RunningHub workflow is not ready (RH 810). Open the workflow on runninghub.cn, save it, run it once in the UI, then retry. ' +
-      'Verify with GET /api/workflow-setup (see workflows/README.md).'
+      'Verify with GET /api/workflow-setup (see runninghub/workflows/README.md).'
     )
   }
 
   if (code === '801' || message.includes('WORKFLOW_NOT_FOUND')) {
     return (
-      'RunningHub workflow ID not found (RH 801). Re-import workflows/sdxl-txt2img-api.json and update RH_WORKFLOW_ID in .env.local.'
+      'RunningHub workflow ID not found (RH 801). Re-import runninghub/workflows/sdxl-txt2img-api.json and update RH_WORKFLOW_ID in .env.local.'
     )
   }
 

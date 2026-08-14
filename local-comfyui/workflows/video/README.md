@@ -65,9 +65,9 @@ All options: `--prompt --negative --ckpt --motion --frames --width --height
 
 ## Also Available
 
-- Launch script: `../../scripts/start_comfyui_m3.sh` (copy to your ComfyUI root)
+- Launch script: `../../../scripts/start_comfyui_m3.sh` (copy to your ComfyUI root)
 - Enhanced image workflow: `../pony_nsfw_enhanced_t2i.json`
-- Full model & setup guide: `../../docs/MODELS_AND_SETUP.md`
+- Full model & setup guide: `../../../docs/MODELS_AND_SETUP.md`
 
 ## Next Possible Improvements
 

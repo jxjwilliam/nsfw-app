@@ -8,8 +8,9 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 |-----|----------|
 | [Implementation guide](docs/implementation-guide.md) | Detailed flows, mermaid diagrams, dual-backend behavior (less code, more description) |
 | [Image creation pipeline](docs/image-creation-pipeline.md) | All resources and parameters used from plan → generate → status |
-| [Design spec](docs/superpowers/specs/2026-05-21-runninghub-nsfw-generator-design.md) | Original product contract |
-| [Build plan](docs/superpowers/plans/2026-05-21-runninghub-nsfw-generator.md) | Agent step-by-step implementation checklist |
+| [Local ComfyUI design spec](docs/superpowers/specs/oc_2026-08-14-local-comfyui-backend-design.md) | Current `BACKEND=local` design |
+| [Local ComfyUI build plan](docs/superpowers/plans/oc_2026-08-14-local-comfyui-backend.md) | Agent step-by-step implementation checklist |
+| [ComfyUI workflow setup](runninghub/workflows/README.md) | Import `sdxl-*.json` on RunningHub, node map, RH 810/801 fixes |
 
 ## App workflow
 
@@ -41,7 +42,7 @@ No login, no payment UI — only your RunningHub account balance is charged when
 |------|
 | ![Home](screenshots/home.png) |
 
-## App workflow
+## Server workflow
 
 ### What the server does (plan → generate → status)
 
@@ -78,13 +79,13 @@ The app chooses the backend from `.env.local`:
 | **Local ComfyUI** | `BACKEND=local` | Local `POST /api/prompt` + history polling | Uses **your** checkpoints on your machine (no G-2 filter) | Shown as ¥0 |
 | **Standard Model** | `RH_WORKFLOW_ID` empty | `POST /openapi/v2/.../text-to-image` + `query` | G-2 **server-side** review (error `1501` on explicit prompts) | Live **price-preview** per model |
 
-**ComfyUI setup:** import [`workflows/sdxl-txt2img-api.json`](workflows/sdxl-txt2img-api.json) on RunningHub, then set `RH_WORKFLOW_ID` — see [ComfyUI workflow setup](#comfyui-workflow-setup-recommended-for-nsfw) and [`workflows/README.md`](workflows/README.md).
+**ComfyUI setup:** import [`runninghub/workflows/sdxl-txt2img-api.json`](runninghub/workflows/sdxl-txt2img-api.json) on RunningHub, then set `RH_WORKFLOW_ID` — see [ComfyUI workflow setup](#comfyui-workflow-setup-recommended-for-nsfw) and [`runninghub/workflows/README.md`](runninghub/workflows/README.md).
 
 ### Router (Standard Model mode only)
 
 When `RH_WORKFLOW_ID` is not set, `/api/plan` runs the curated router:
 
-1. Load allowlist from [`data/models.json`](data/models.json) (`nsfwOk` + style match).
+1. Load allowlist from [`runninghub/models.json`](runninghub/models.json) (`nsfwOk` + style match).
 2. **Enhance** prompt with a style suffix (anime, realistic, hentai, hassaku).
 3. **Price-preview** up to four candidates via RunningHub `POST /openapi/v2/price-preview/{route}`.
 4. **Rank** by quality tier:
@@ -93,7 +94,7 @@ When `RH_WORKFLOW_ID` is not set, `/api/plan` runs the curated router:
    - **Medium** — balance `priority × 10 − price`
 5. Save winning plan (+ up to two alternatives) to `.plans/<planId>.json`.
 
-ComfyUI mode skips the router and builds a `nodeInfoList` (prompt, negative, width/height, steps, cfg, seed) mapped to nodes in `workflows/sdxl-txt2img-api.json` — overridable via `RH_WORKFLOW_*_NODE` env vars.
+ComfyUI mode skips the router and builds a `nodeInfoList` (prompt, negative, width/height, steps, cfg, seed) mapped to nodes in `runninghub/workflows/sdxl-txt2img-api.json` — overridable via `RH_WORKFLOW_*_NODE` env vars.
 
 ### API routes
 
@@ -112,8 +113,12 @@ ComfyUI mode skips the router and builds a `nodeInfoList` (prompt, negative, wid
 ```text
 runninghub-app/
 ├── .env.local              # RH_API_KEY, PORT, optional RH_WORKFLOW_ID
-├── data/models.json        # Standard Model catalog (router)
-├── workflows/              # ComfyUI JSON to import on RunningHub
+├── runninghub/             # everything RunningHub
+│   ├── models.json         # Standard Model catalog (router)
+│   └── workflows/          # ComfyUI JSON to import on RunningHub (see runninghub/workflows/README.md)
+├── local-comfyui/          # everything local ComfyUI
+│   ├── checkpoints/        # symlink to your model dir (do not scan)
+│   └── workflows/          # script-generated workflows (scripts/generate-nsfw-workflows.js) + video/
 ├── .plans/<planId>.json    # gitignored; plan TTL ~5 min
 └── outputs/YYYY-MM-DD/<jobId>/
     ├── metadata.json       # status, prompts, route, usage
@@ -166,7 +171,7 @@ Without `RH_API_KEY`, plan/generate routes return **503** with a message about t
 
 ### ComfyUI workflow setup (recommended for NSFW)
 
-1. Import [`workflows/sdxl-txt2img-api.json`](workflows/sdxl-txt2img-api.json) on [RunningHub](https://www.runninghub.cn) ([`workflows/README.md`](workflows/README.md)).
+1. Import [`runninghub/workflows/sdxl-txt2img-api.json`](runninghub/workflows/sdxl-txt2img-api.json) on [RunningHub](https://www.runninghub.cn) ([`runninghub/workflows/README.md`](runninghub/workflows/README.md)).
 2. Set an uncensored SDXL checkpoint in **Load Checkpoint** and run the workflow once.
 3. Copy the numeric ID from the workflow URL into `.env.local`:
    ```env
@@ -189,6 +194,12 @@ Plan should then show **ComfyUI workflow (RH_WORKFLOW_ID)** instead of a G-2 mod
 | `npm run start` | Serve production build (after `build`) |
 | `npm run lint` | ESLint via Next.js |
 | `npm test` | Router, Comfy plan, and output-store unit tests (Vitest) |
+| `node scripts/generate-nsfw-workflows.js` | Regenerate `local-comfyui/workflows/` (1 per checkpoint, 832×1216, NSFW prompts from a random pick of DeepSeek / Kimi / Qwen) |
+| `node scripts/run-workflows.js --source=generated` | Submit generated workflows to local ComfyUI |
+| `node scripts/generate-animatediff-video.js` | Generate a short NSFW video via local ComfyUI (AnimateDiff) |
+
+LLM prompt generation needs at least one of `DEEPSEEK_API_KEY`, `KIMI_API_KEY`,
+or `DASHSCOPE_API_KEY` in `.env.local` (see `.env.example` for defaults).
 
 ## Quick API smoke test
 

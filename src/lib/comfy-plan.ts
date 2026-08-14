@@ -63,7 +63,7 @@ export async function createComfyPlan(request: PlanRequest) {
   const wf = getWorkflowConfig()
   if (!wf) {
     throw new Error(
-      'RH_WORKFLOW_ID is not set. Import workflows/sdxl-txt2img-api.json on RunningHub, then add the workflow ID from the URL to .env.local (see workflows/README.md).'
+      'RH_WORKFLOW_ID is not set. Import runninghub/workflows/sdxl-txt2img-api.json on RunningHub, then add the workflow ID from the URL to .env.local (see runninghub/workflows/README.md).'
     )
   }
   const enhanced = enhancePrompt(request.prompt, request.style)

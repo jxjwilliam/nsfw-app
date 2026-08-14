@@ -1,6 +1,6 @@
 # RunningHub NSFW Generator — Implementation Guide
 
-**Date:** 2026-05-21  
+**Date:** 2026-08-14 (original 2026-05-21, updated for local ComfyUI mode)
 **Project:** `runninghub-app`  
 **Audience:** Developers and operators who need to understand how the app is built and how data moves through it — without reading every source file.
 
@@ -8,11 +8,11 @@
 
 | Document | Purpose |
 |----------|---------|
-| [Design spec](./superpowers/specs/2026-05-21-runninghub-nsfw-generator-design.md) | Original product contract (partially superseded by ComfyUI mode) |
-| [Build plan](./superpowers/plans/2026-05-21-runninghub-nsfw-generator.md) | Step-by-step agent implementation checklist |
+| [Local ComfyUI design spec](./superpowers/specs/oc_2026-08-14-local-comfyui-backend-design.md) | Current `BACKEND=local` design |
+| [Local ComfyUI build plan](./superpowers/plans/oc_2026-08-14-local-comfyui-backend.md) | Step-by-step agent implementation checklist |
 | [README](../README.md) | Setup, quick start, operator notes |
 | [Image creation pipeline](./image-creation-pipeline.md) | Resources and parameters for plan → generate → status |
-| [ComfyUI workflow setup](../workflows/README.md) | Import `sdxl-txt2img-api.json` on RunningHub |
+| [ComfyUI workflow setup](../runninghub/workflows/README.md) | Import `sdxl-txt2img-api.json` on RunningHub |
 
 ---
 
@@ -55,7 +55,7 @@ flowchart LR
 | UI | React client component (`page.tsx`) | Form, plan card, polling loop, history sidebar |
 | API | Next.js Route Handlers under `src/app/api/` | Validate input, orchestrate lib modules, return JSON |
 | Domain logic | `src/lib/*` | Router, RunningHub clients, persistence, in-memory jobs |
-| Config | `.env.local`, `data/models.json`, optional `RH_WORKFLOW_*` | Secrets and allowlists |
+| Config | `.env.local`, `runninghub/models.json`, optional `RH_WORKFLOW_*`, `BACKEND` | Secrets and allowlists |
 | Artifacts | `outputs/`, `.plans/` | Gitignored run history and short-lived plans |
 
 Dev server listens on **`PORT` from `.env.local`** (default **4000**). `npm run dev` sources `.env.local` before starting Next.js.
@@ -122,23 +122,32 @@ The UI does **not** talk to RunningHub directly. All platform calls go through s
 
 ---
 
-## 4. Dual backend: how the app picks a path
+## 4. Backends: how the app picks a path
 
-At startup the server reads `RH_WORKFLOW_ID`. If it is non-empty, **every** plan uses ComfyUI workflow mode. Otherwise **every** plan uses the Standard Model router.
+`createPlan()` in `src/lib/router.ts` picks one of three backends, in order:
+
+1. `BACKEND=local` → **Local ComfyUI** (`src/lib/local-plan.ts`) — no cloud cost, no G-2 filter.
+2. `RH_WORKFLOW_ID` set → **RunningHub ComfyUI workflow** (`src/lib/comfy-plan.ts`) — your checkpoint on RunningHub.
+3. otherwise → **Standard Model router** (`src/lib/router.ts`) — curated catalog + price preview.
 
 ```mermaid
 flowchart TD
-  Start[POST /api/plan] --> Check{RH_WORKFLOW_ID set?}
-  Check -->|yes| ComfyPlan[comfy-plan: build nodeInfoList]
-  Check -->|no| Router[router: catalog + price-preview]
+  Start[POST /api/plan] --> LocalCheck{BACKEND=local?}
+  LocalCheck -->|yes| LocalPlan[local-plan: ping ComfyUI + build graph]
+  LocalCheck -->|no| WfCheck{RH_WORKFLOW_ID set?}
+  WfCheck -->|yes| ComfyPlan[comfy-plan: build nodeInfoList]
+  WfCheck -->|no| Router[router: catalog + price-preview]
+  LocalPlan --> SavePlan[Save .plans/planId.json]
   ComfyPlan --> SavePlan[Save .plans/planId.json]
   Router --> SavePlan
   SavePlan --> Return[Return plan to UI]
 
   Confirm[POST /api/generate] --> LoadPlan[Load plan by planId]
   LoadPlan --> Mode{plan.mode?}
+  Mode -->|local-comfy| LocalSubmit[POST /api/prompt]
   Mode -->|comfy| ComfySubmit[task/openapi/create]
   Mode -->|standard| G2Submit[openapi/v2/route]
+  LocalSubmit --> Job[Create outputs job folder]
   ComfySubmit --> Job[Create outputs job folder]
   G2Submit --> Job
 ```
@@ -153,7 +162,7 @@ flowchart TD
 
 **Weaknesses for NSFW:** G-2 official routes run **server-side content safety** (error `1501`). Consumer API keys may get `1014` (Enterprise-Shared required). Explicit prompts often fail regardless of app settings.
 
-**Catalog:** `data/models.json` lists a small allowlist (e.g. G-2 official, G-2 budget). Each entry defines which styles it supports, resolution/quality per tier, and a priority score for ranking.
+**Catalog:** `runninghub/models.json` lists a small allowlist (e.g. G-2 official, G-2 budget). Each entry defines which styles it supports, resolution/quality per tier, and a priority score for ranking.
 
 ### 4.2 ComfyUI workflow mode
 
@@ -165,9 +174,23 @@ flowchart TD
 
 **Weaknesses:** No built-in price preview in app (plan shows ¥0 placeholder); you must **import** the shipped workflow on RunningHub once to obtain a numeric workflow ID (platform does not mint IDs via API).
 
-**Shipped graph:** `workflows/sdxl-txt2img-api.json` — SDXL checkpoint → positive/negative CLIP → KSampler → VAE decode → SaveImage.
+**Shipped graph:** `runninghub/workflows/sdxl-txt2img-api.json` — SDXL checkpoint → positive/negative CLIP → KSampler → VAE decode → SaveImage.
 
-Detailed import steps: [workflows/README.md](../workflows/README.md).
+Detailed import steps: [runninghub/workflows/README.md](../runninghub/workflows/README.md).
+
+### 4.3 Local ComfyUI mode
+
+**When:** `BACKEND=local` in `.env.local` (checked first; overrides `RH_WORKFLOW_ID`).
+
+**Local surface:** plain ComfyUI HTTP — `POST /api/prompt` to submit, `GET /api/history/{prompt_id}` to poll, `GET /view?filename=…&type=output` to fetch the image.
+
+**Strengths:** No cloud cost, no G-2 content filter, works fully offline with your own checkpoints.
+
+**Weaknesses:** Requires ComfyUI running at `LOCAL_COMFY_URL` (plan returns 503 `LocalComfy:` otherwise); quality depends on your local models; images land in ComfyUI's output dir and are fetched over HTTP.
+
+**Style mapping:** `src/lib/local-plan.ts` maps style chips to checkpoints (`anime`/`hentai` → Pony, `hassaku` → iniverseMix, `realistic` → Juggernaut) with per-checkpoint steps/CFG/prefix tuning; overridable via `LOCAL_CKPT_<STYLE>`.
+
+**Plan snapshot:** `mode: "local-comfy"`, `localGraph` holds the full API-format workflow, `estimatedPrice: 0`.
 
 ---
 
@@ -262,7 +285,9 @@ sequenceDiagram
   alt expired or missing
     PL-->>G: null → 404
   end
-  alt mode comfy
+  alt mode local-comfy
+    G->>LC: POST {LOCAL_COMFY_URL}/api/prompt → prompt_id
+  else mode comfy
     G->>RH: POST /task/openapi/create
   else mode standard
     G->>RH: POST /openapi/v2/{route}
@@ -284,9 +309,14 @@ flowchart TD
   H -->|no| Inc[pollCount++]
   Inc --> Cap{pollCount > 60?}
   Cap -->|yes| Timeout[FAILED: ~6 min timeout]
-  Cap -->|no| API{apiMode comfy?}
-  API -->|yes| Out[POST /task/openapi/outputs]
-  API -->|no| Q[POST /openapi/v2/query]
+  Cap -->|no| API{apiMode?}
+  API -->|local-comfy| Hist[GET /api/history/{prompt_id}]
+  API -->|comfy| Out[POST /task/openapi/outputs]
+  API -->|standard| Q[POST /openapi/v2/query]
+  Hist --> HistOK{status?}
+  HistOK -->|success + image| OK
+  HistOK -->|error| Fail
+  HistOK -->|running| Run
   Out --> C0{code}
   C0 -->|0 + fileUrl| OK[Download image → image.png]
   C0 -->|805| Fail[FAILED + reason]
@@ -319,7 +349,7 @@ This is separate from the **app’s** plan/generate flow: it is how the graph ge
 ```mermaid
 flowchart TD
   subgraph repo [This repository]
-    JSON[workflows/sdxl-txt2img-api.json]
+    JSON[runninghub/workflows/sdxl-txt2img-api.json]
   end
 
   subgraph rhui [RunningHub website]
@@ -427,8 +457,10 @@ Descriptions only — open the file when you need to change behavior.
 | `runninghub-comfy.ts` | ComfyUI HTTP: create task, poll outputs, fetch workflow JSON for setup |
 | `runninghub-errors.ts` | Map RunningHub codes (1014, 1501, 1505) and ComfyUI codes (801, 810) to operator-readable messages |
 | `workflow-config.ts` | Read `RH_WORKFLOW_ID` and optional node ID overrides |
-| `router.ts` | Catalog load, filter, enhance, preview, rank, `createPlan` entry (delegates to comfy when configured) |
+| `router.ts` | Catalog load, filter, enhance, preview, rank, `createPlan` dispatch (local → comfy → standard) |
 | `comfy-plan.ts` | Dimension map, node list builder, `createComfyPlan` |
+| `local-plan.ts` | Style→checkpoint table, local workflow graph, `createLocalPlan` |
+| `local-comfy.ts` | ComfyUI HTTP client: ping, submit prompt, poll history, build view URL |
 | `plans.ts` | TTL read/write for `.plans/` |
 | `output-store.ts` | Job directory creation, finalize success/failure, history scan, direct job-dir lookup |
 | `jobs.ts` | In-memory job state + hydration |
@@ -438,8 +470,8 @@ Descriptions only — open the file when you need to change behavior.
 | Route | Responsibility |
 |-------|----------------|
 | `api/plan` | Validate body, call `createPlan`, return JSON or mapped HTTP status |
-| `api/generate` | Load plan, submit Standard or Comfy task, init output dir |
-| `api/status` | Poll RunningHub, finalize files, enforce 60-poll cap |
+| `api/generate` | Load plan, submit Standard / Comfy / local task, init output dir |
+| `api/status` | Poll RunningHub or local ComfyUI, finalize files, enforce 60-poll cap |
 | `api/image` | Stream `image.png` for a jobId with path guard |
 | `api/history` | List recent runs from disk |
 | `api/reveal` | macOS `open` on output folder (local only) |
@@ -465,6 +497,11 @@ Descriptions only — open the file when you need to change behavior.
 | `RH_WORKFLOW_NEGATIVE_NODE` | No | Default `7` |
 | `RH_WORKFLOW_SIZE_NODE` | No | Default `5` |
 | `RH_WORKFLOW_SAMPLER_NODE` | No | Default `3` |
+| `BACKEND` | No | `local` routes plan/generate/status to local ComfyUI (overrides workflow mode) |
+| `LOCAL_COMFY_URL` | No | Local ComfyUI base URL (default `http://localhost:8188`) |
+| `LOCAL_CKPT_ANIME/HENTAI/HASSAKU/REALISTIC` | No | Per-style checkpoint filename overrides |
+
+**Workflow-generation keys** (used only by `scripts/generate-nsfw-workflows.js`, not the app routes): `DEEPSEEK_API_KEY` (+ `DEEPSEEK_BASE_URL`, `DEEPSEEK_MODEL`), `KIMI_API_KEY` (+ `KIMI_BASE_URL`, `KIMI_MODEL`), `DASHSCOPE_API_KEY` (+ `DASHSCOPE_BASE_URL`, `QWEN_MODEL`). At least one key is required; the script randomly picks among the configured providers per checkpoint.
 
 Browser persistence (not env): `runninghub-nsfw-prefs-v1` in `localStorage` for prompt and chip selections.
 
@@ -513,6 +550,7 @@ Defaults on first visit: **Hentai**, **9:16**, **High** (NSFW-only product choic
 | Router ranking / prompt enhancement | Vitest unit tests (`router.test.ts`, `comfy-plan.test.ts`, `output-store.test.ts`) |
 | RunningHub integration | Manual smoke via `curl` or UI; requires real key |
 | ComfyUI path | Set `RH_WORKFLOW_ID`, run `workflow-setup`, then full Plan → Confirm |
+| Local path | Set `BACKEND=local`, start ComfyUI, then full Plan → Confirm (see `local-plan.test.ts`, `local-comfy.test.ts`) |
 
 Tests intentionally avoid calling live APIs in CI.
 
@@ -527,7 +565,7 @@ Tests intentionally avoid calling live APIs in CI.
 | Retries | None | Single retry on transient poll errors |
 | Router scope | 2–4 models in JSON | More routes after NSFW validation |
 | Deploy | Local only | Not designed for multi-tenant hosting |
-| Design spec | Says “no ComfyUI” | ComfyUI added for NSFW path — spec is historical |
+| Local backend | Requires ComfyUI up at plan time (503 otherwise) | Optional warm-up / queue management |
 
 ---
 
@@ -536,13 +574,12 @@ Tests intentionally avoid calling live APIs in CI.
 ```mermaid
 flowchart TD
   Q{What do you need?}
-  Q -->|Product intent and API contracts| Spec[design spec]
-  Q -->|How to build from scratch| Plan[implementation plan]
+  Q -->|BACKEND=local design & build| Spec[oc_2026-08-14 local ComfyUI spec/plan]
   Q -->|How it works today| Here[this guide]
   Q -->|Install and run| Readme[README]
-  Q -->|Import Comfy workflow| WF[workflows/README]
+  Q -->|Import Comfy workflow| WF[runninghub/workflows/README]
 ```
 
 ---
 
-*Last updated to reflect ComfyUI workflow mode, port 4000 via `.env.local`, exFAT-safe output scanning, ComfyUI error 810/801 handling, NSFW defaults, and `localStorage` preferences.*
+*Last updated 2026-08-14: three-backend dispatch (local / ComfyUI workflow / Standard), `runninghub/models.json` catalog, DeepSeek/Kimi/Qwen workflow-prompt generation.*

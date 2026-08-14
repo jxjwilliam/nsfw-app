@@ -28,13 +28,13 @@ Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → 
 - Thin route handlers in `src/app/api/{plan,generate,status,image,history,reveal,workflow-setup}/route.ts`; all logic in `src/lib/*.ts`. Put new logic there with colocated vitest tests (env save/restore in `beforeEach`/`afterEach`, see `router.test.ts`).
 - Lifecycle: `/api/plan` saves `.plans/<planId>.json` (5 min TTL) → `/api/generate` creates `outputs/YYYY-MM-DD/<jobId>/` → `/api/status` polls the backend and finalizes `image.png`.
 - `outputs/` is a **symlink to ComfyUI's output dir on the SamsungT7 exFAT drive**. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same. If the drive is unmounted, status/history break after a dev-server restart.
-- `checkpoints/` is a symlink to a multi-GB model dir. **Never let Tailwind scan it**: `src/app/globals.css` must keep `@import "tailwindcss" source(none);` + `@source "../**/*.{ts,tsx,mdx}";`. A plain `@import "tailwindcss"` makes `next build` scan the symlink and hang at ~32GB memory.
+- `local-comfyui/checkpoints/` is a symlink to a multi-GB model dir. **Never let Tailwind scan it**: `src/app/globals.css` must keep `@import "tailwindcss" source(none);` + `@source "../**/*.{ts,tsx,mdx}";`. A plain `@import "tailwindcss"` makes `next build` scan the symlink and hang at ~32GB memory.
 - Backend dispatch happens in `createPlan()` (`src/lib/router.ts`): `BACKEND=local` → `createLocalPlan`, else comfy-workflow or standard router.
 
 ## Workflows & scripts
 
-- `workflows/` — hand-written static RunningHub templates (`sdxl-*.json`, 1024×1024, `runninghub-nsfw` prefix). Edit by hand.
-- `generated-workflows/` — **script output; do not hand-edit**. `scripts/generate-nsfw-workflows.js` regenerates it (dated filenames, 832×1216, per-checkpoint NSFW prompts via DeepSeek/Qwen; model overridable with `DEEPSEEK_MODEL`). `scripts/run-workflows.js` submits these to local ComfyUI.
+- `runninghub/` — everything RunningHub: `models.json` (Standard Model catalog) + `workflows/` (hand-written static RunningHub templates, `sdxl-*.json`, 1024×1024, `runninghub-nsfw` prefix). Edit by hand.
+- `local-comfyui/` — everything local ComfyUI: `checkpoints/` symlink + `workflows/` (**script output; do not hand-edit**). `scripts/generate-nsfw-workflows.js` regenerates it (dated filenames, 832×1216, per-checkpoint NSFW prompts; it randomly picks DeepSeek / Kimi / Qwen from the configured keys — overridable with `DEEPSEEK_MODEL`, `KIMI_MODEL`, `QWEN_MODEL`). `scripts/run-workflows.js` submits these to local ComfyUI.
 - `scripts/start_comfyui_m3.sh` — M3 Pro 18GB launcher; must run from the ComfyUI root (where `main.py` is).
 
 ## Conventions & gotchas
@@ -42,5 +42,5 @@ Single-user local Next.js 15 app: prompt → **plan** (pick backend + cost) → 
 - Semantic lowercase commit messages (`fix:`, `feat:`, `docs:`, `chore:`, `cleanup:`) — established in history.
 - Standard-mode prompts go through G-2 review; explicit prompts return error `1501`. Workflow and local modes bypass it.
 - RunningHub workflow errors: `810` = workflow not saved/run yet, `801` = invalid workflow ID (see README for fixes).
-- New AI-generated docs under `docs/superpowers/` use a `oc_` date prefix (`oc_YYYY-MM-DD-<name>.md`); user-authored docs (`docs/`, `generated-workflows/`, `screenshots/`) keep their names.
+- New AI-generated docs under `docs/superpowers/` use a `oc_` date prefix (`oc_YYYY-MM-DD-<name>.md`); user-authored docs (`docs/`, `local-comfyui/workflows/`, `screenshots/`) keep their names.
 - Gitignored (do not commit): `.env.local`, `.omo/`, `outputs/`, `checkpoints/`, `prompts/`, `logs/`, `tsconfig.tsbuildinfo`.

@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({
         ok: false,
         error:
-          'RH_WORKFLOW_ID is not set. See workflows/README.md to import sdxl-txt2img-api.json on RunningHub.',
+          'RH_WORKFLOW_ID is not set. See runninghub/workflows/README.md to import sdxl-txt2img-api.json on RunningHub.',
       })
     }
 
@@ -27,7 +27,7 @@ export async function GET() {
       workflowId,
       nodeMapping: cfg?.nodes,
       nodes,
-      hint: 'Set RH_WORKFLOW_ID in .env.local after importing workflows/sdxl-txt2img-api.json on RunningHub.',
+      hint: 'Set RH_WORKFLOW_ID in .env.local after importing runninghub/workflows/sdxl-txt2img-api.json on RunningHub.',
     })
   } catch (e) {
     const raw = e instanceof Error ? e.message : 'workflow setup failed'

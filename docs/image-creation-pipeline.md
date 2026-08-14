@@ -2,7 +2,7 @@
 
 Reference for every resource and parameter the app uses when creating an image, in pipeline order.
 
-**Related:** [README](../README.md) · [Implementation guide](./implementation-guide.md) · [ComfyUI workflow setup](../workflows/README.md)
+**Related:** [README](../README.md) · [Implementation guide](./implementation-guide.md) · [ComfyUI workflow setup](../runninghub/workflows/README.md)
 
 ---
 
@@ -22,7 +22,8 @@ flowchart LR
 **Mode selection** happens at plan time:
 
 - `RH_WORKFLOW_ID` set in `.env.local` → **ComfyUI workflow** mode
-- `RH_WORKFLOW_ID` empty → **Standard G-2** model router
+- `BACKEND=local` → **Local ComfyUI** mode (checked first in `createPlan`)
+- otherwise (`RH_WORKFLOW_ID` empty) → **Standard G-2** model router
 
 ---
 
@@ -45,7 +46,7 @@ Defaults are defined in `src/lib/nsfw-defaults.ts`.
 
 ## Stage 2 — Plan
 
-**Modules:** `src/lib/router.ts`, `src/lib/comfy-plan.ts`, `src/lib/workflow-config.ts`
+**Modules:** `src/lib/router.ts`, `src/lib/local-plan.ts`, `src/lib/comfy-plan.ts`, `src/lib/workflow-config.ts`
 
 ### Shared (both modes)
 
@@ -72,7 +73,7 @@ Defaults are defined in `src/lib/nsfw-defaults.ts`.
 
 | File | Role |
 |------|------|
-| `data/models.json` | Allowlisted models, routes, tier maps, priorities |
+| `runninghub/models.json` | Allowlisted RunningHub Standard models, routes, tier maps, priorities |
 
 #### Models in catalog
 
@@ -133,7 +134,7 @@ Defaults are defined in `src/lib/nsfw-defaults.ts`.
 
 #### Shipped workflow graph
 
-File: `workflows/sdxl-txt2img-api.json` (import on RunningHub once; API references the resulting `workflowId`).
+File: `runninghub/workflows/sdxl-txt2img-api.json` (import on RunningHub once; API references the resulting `workflowId`).
 
 | Node | Class | App overrides? | Fixed in JSON (not overridden by app) |
 |------|-------|----------------|--------------------------------------|
@@ -176,6 +177,44 @@ Built in `buildComfyNodeInfoList` (`src/lib/comfy-plan.ts`):
 `workflowId`, `nodeInfoList`, `mode: "comfy"`, `route: "comfyui/workflow"`.
 
 No price-preview in Comfy mode (`estimatedPrice: 0` placeholder on the plan card).
+
+---
+
+### Mode C — Local ComfyUI (`BACKEND=local`)
+
+**When:** `BACKEND=local` in `.env.local` (takes priority over `RH_WORKFLOW_ID`).
+
+#### Environment
+
+| Variable | Default | Role |
+|----------|---------|------|
+| `BACKEND` | *(unset = RunningHub)* | `local` routes plan/generate/status to local ComfyUI |
+| `LOCAL_COMFY_URL` | `http://localhost:8188` | Local ComfyUI base URL (app code; `COMFYUI_URL` is for `scripts/`) |
+| `LOCAL_CKPT_<STYLE>` | per-style table | Optional checkpoint filename overrides (`ANIME`/`HENTAI`/`HASSAKU`/`REALISTIC`) |
+
+#### Style → checkpoint mapping (defaults, overridable)
+
+| Style chip | Checkpoint | Steps / CFG base |
+|------------|------------|------------------|
+| `anime` / `hentai` | `ponyDiffusionV6XL_v6StartWithThisOne.safetensors` | 28 / 7.5 (+ pony `score_9…` prefix) |
+| `hassaku` | `iniverseMixSFWNSFW_realXLV1.safetensors` | 28 / 6.5 |
+| `realistic` | `juggernautXL_ragnarokBy.safetensors` | 28 / 6.5 |
+
+Quality tier adjusts **steps only** (low = base − 10, high = base + 6, floor 4);
+CFG stays at the checkpoint base. Graph is the same 7-node skeleton as the
+generated workflows: KSampler(3), CheckpointLoaderSimple(4), EmptyLatentImage(5),
+CLIPTextEncode(6/7), VAEDecode(37), SaveImage(9).
+
+#### Local polling
+
+| Call | Endpoint |
+|------|----------|
+| Submit | `POST {LOCAL_COMFY_URL}/api/prompt` → `prompt_id` (used as `taskId`) |
+| Poll | `GET {LOCAL_COMFY_URL}/api/history/{prompt_id}` |
+| Image | `GET {LOCAL_COMFY_URL}/view?filename=…&type=output` |
+
+Client errors are prefixed `LocalComfy:` so routes can map them to 503 (plan)
+/ 502 (generate) without the RunningHub `formatComfyUiError` path.
 
 ---
 
@@ -262,6 +301,7 @@ Image is served to the UI via `GET /api/image?jobId=`.
 |----------------------------------|-----------|----------------------------------------|
 | prompt, style, aspect, quality | Style suffixes, Comfy negative prompt, steps/cfg/seed, dimensions | Checkpoint, sampler name, scheduler, VAE graph |
 | `RH_API_KEY` | Model catalog, ranking | G-2 content rules (standard mode) |
+| `BACKEND=local` + `LOCAL_CKPT_*` | Local checkpoint + sampler params | Local ComfyUI availability |
 | `RH_WORKFLOW_ID` + node overrides | Plan TTL, poll caps | Checkpoint choice in Comfy UI |
 
 ---
@@ -271,11 +311,12 @@ Image is served to the UI via `GET /api/image?jobId=`.
 | Stage | Primary modules |
 |-------|-----------------|
 | UI inputs | `src/app/page.tsx`, `src/lib/nsfw-defaults.ts` |
-| Plan | `src/lib/router.ts`, `src/lib/comfy-plan.ts`, `src/lib/workflow-config.ts`, `src/lib/plans.ts` |
+| Plan | `src/lib/router.ts` (dispatch), `src/lib/local-plan.ts`, `src/lib/comfy-plan.ts`, `src/lib/workflow-config.ts`, `src/lib/plans.ts` |
 | Generate | `src/app/api/generate/route.ts`, `src/lib/runninghub.ts`, `src/lib/runninghub-comfy.ts` |
 | Status | `src/app/api/status/route.ts`, `src/lib/jobs.ts`, `src/lib/output-store.ts` |
+| Local backend | `src/lib/local-comfy.ts` (ping/submit/poll client), `src/lib/local-plan.ts` (checkpoint mapping + graph) |
 | Errors | `src/lib/runninghub-errors.ts` |
 
 ---
 
-*Last updated: 2026-07-09 — port 4000, ComfyUI mode, exFAT-safe output scanning.*
+*Last updated: 2026-08-14 — runninghub/ catalog rename, local ComfyUI mode.*

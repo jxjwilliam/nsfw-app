@@ -16,7 +16,7 @@ const STYLE_SUFFIX: Record<Style, string> = {
 }
 
 export function loadCatalog(): ModelEntry[] {
-  const p = path.join(process.cwd(), 'data', 'models.json')
+  const p = path.join(process.cwd(), 'runninghub', 'models.json')
   return JSON.parse(readFileSync(p, 'utf-8')) as ModelEntry[]
 }
 

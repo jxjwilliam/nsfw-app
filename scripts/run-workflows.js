@@ -5,8 +5,8 @@
  * Submits JSON workflow files to ComfyUI for automatic execution.
  * 
  * Usage:
- *   node scripts/run-workflows.js                                    # workflows/ folder
- *   node scripts/run-workflows.js --source=generated                # generated-workflows/ folder
+ *   node scripts/run-workflows.js                                    # runninghub/workflows/ folder
+ *   node scripts/run-workflows.js --source=generated                # local-comfyui/workflows/ folder
  *   node scripts/run-workflows.js --source=all                      # both folders
  *   node scripts/run-workflows.js --output=/path/to/output           # custom output copy destination
  *   node scripts/run-workflows.js --source=generated --output=./outputs
@@ -117,8 +117,8 @@ async function copyOutputsToDir(promptIds, destDir) {
 }
 
 async function main() {
-  const workflowsDir = join(__dirname, '..', 'workflows');
-  const generatedDir = join(__dirname, '..', 'generated-workflows');
+  const workflowsDir = join(__dirname, '..', 'runninghub', 'workflows');
+  const generatedDir = join(__dirname, '..', 'local-comfyui', 'workflows');
   
   console.log('🎨 ComfyUI Workflow Runner');
   console.log(`   URL: ${COMFYUI_URL}`);

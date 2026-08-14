@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Dynamic NSFW ComfyUI Workflow Generator
- * Uses DeepSeek or Qwen (whichever works best for NSFW) + random checkpoints
+ * Randomly picks DeepSeek, Kimi (Moonshot), or Qwen per checkpoint to write
+ * the NSFW prompt, then saves a dated workflow JSON for local ComfyUI.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
@@ -14,14 +15,21 @@ dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
 const COMFYUI_URL = process.env.COMFYUI_URL || 'http://localhost:8188';
 
-// DeepSeek config
+// --- DeepSeek config ---
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 
-// Qwen/DashScope config
+// --- Kimi / Moonshot config ---
+const KIMI_API_KEY = process.env.KIMI_API_KEY;
+const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1';
+const KIMI_MODEL = process.env.KIMI_MODEL || 'kimi-k3';
+
+// --- Qwen / DashScope config ---
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
-const DASHSCOPE_BASE_URL = process.env.DASHSCOPE_BASE_URL;
+const DASHSCOPE_BASE_URL =
+  process.env.DASHSCOPE_BASE_URL ||
+  'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen3.7-max';
 
 const CHECKPOINTS = [
@@ -32,14 +40,14 @@ const CHECKPOINTS = [
   "realvisxlV50_v50LightningBakedvae.safetensors"
 ];
 
-const OUTPUT_DIR = join(__dirname, '..', 'generated-workflows');
+const OUTPUT_DIR = join(__dirname, '..', 'local-comfyui', 'workflows');
 
-if (!DEEPSEEK_API_KEY && !DASHSCOPE_API_KEY) {
-  console.error('❌ Neither DEEPSEEK_API_KEY nor DASHSCOPE_API_KEY found in .env.local');
+if (!DEEPSEEK_API_KEY && !KIMI_API_KEY && !DASHSCOPE_API_KEY) {
+  console.error(
+    '❌ None of DEEPSEEK_API_KEY, KIMI_API_KEY, or DASHSCOPE_API_KEY found in .env.local'
+  );
   process.exit(1);
 }
-
-
 
 async function generateWithDeepSeek(systemPrompt, userPrompt) {
   const response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
@@ -50,6 +58,27 @@ async function generateWithDeepSeek(systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model: DEEPSEEK_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.9,
+      max_tokens: 400
+    })
+  });
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+async function generateWithKimi(systemPrompt, userPrompt) {
+  const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${KIMI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: KIMI_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -83,6 +112,24 @@ async function generateWithQwen(systemPrompt, userPrompt) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
+const PROVIDERS = [
+  {
+    name: 'DeepSeek',
+    available: () => Boolean(DEEPSEEK_API_KEY),
+    generate: generateWithDeepSeek
+  },
+  {
+    name: 'Kimi',
+    available: () => Boolean(KIMI_API_KEY),
+    generate: generateWithKimi
+  },
+  {
+    name: 'Qwen',
+    available: () => Boolean(DASHSCOPE_API_KEY),
+    generate: generateWithQwen
+  }
+];
+
 async function generatePrompt(checkpoint) {
   const isPony = checkpoint.includes('pony');
   
@@ -94,28 +141,45 @@ Return ONLY the prompt text, no explanations.`;
 
   const userPrompt = `Generate a new explicit NSFW prompt for checkpoint: ${checkpoint}`;
 
-  // Try both providers and pick the best (longest non-empty) result
-  const results = await Promise.allSettled([
-    DEEPSEEK_API_KEY ? generateWithDeepSeek(systemPrompt, userPrompt) : Promise.reject('No DeepSeek key'),
-    DASHSCOPE_API_KEY ? generateWithQwen(systemPrompt, userPrompt) : Promise.reject('No Qwen key')
-  ]);
+  // Randomly order the available providers and use the first good prompt
+  const candidates = PROVIDERS.filter(p => p.available()).sort(
+    () => Math.random() - 0.5
+  );
 
-  const prompts = results
-    .filter(r => r.status === 'fulfilled' && r.value && r.value.length > 20)
-    .map(r => r.value);
-
-  if (prompts.length === 0) {
-    console.warn('   ⚠️ Both AI providers failed/returned empty, using fallback');
+  if (candidates.length === 0) {
+    console.warn('   ⚠️ No AI provider configured, using fallback');
     return isPony 
       ? "score_9, score_8_up, score_7_up, beautiful woman, massive breasts, erect nipples, explicit wet pussy, spread legs wide, aroused, full body, detailed anatomy, bedroom"
       : "masterpiece, best quality, photorealistic, stunning 25yo woman, seductive eyes, voluptuous body, massive breasts with erect nipples, completely nude, legs spread eagle, detailed wet aroused pussy, glistening skin, cinematic lighting";
   }
 
-  // Pick the longest prompt (usually more detailed)
-  const best = prompts.reduce((a, b) => a.length >= b.length ? a : b);
-  const winner = results.find(r => r.status === 'fulfilled' && r.value === best);
-  console.log(`   ✅ Using ${winner === results[0] ? 'DeepSeek' : 'Qwen'} prompt (${best.length} chars)`);
-  return best;
+  console.log(
+    `   🎲 Provider order: ${candidates.map(p => p.name).join(' → ')}`
+  );
+
+  for (const provider of candidates) {
+    try {
+      const text = await provider.generate(systemPrompt, userPrompt);
+      if (text && text.length > 20) {
+        console.log(
+          `   ✅ ${provider.name} prompt (${text.length} chars)`
+        );
+        return text;
+      }
+      console.warn(
+        `   ⚠️ ${provider.name} returned empty/short, trying next...`
+      );
+    } catch (error) {
+      console.warn(
+        `   ⚠️ ${provider.name} failed (${error.message}), trying next...`
+      );
+    }
+  }
+
+  console.warn('   ⚠️ All AI providers failed/returned empty, using fallback');
+  return isPony 
+    ? "score_9, score_8_up, score_7_up, beautiful woman, massive breasts, erect nipples, explicit wet pussy, spread legs wide, aroused, full body, detailed anatomy, bedroom"
+    : "masterpiece, best quality, photorealistic, stunning 25yo woman, seductive eyes, voluptuous body, massive breasts with erect nipples, completely nude, legs spread eagle, detailed wet aroused pussy, glistening skin, cinematic lighting";
 }
 
 function createWorkflow(checkpoint, positivePrompt) {

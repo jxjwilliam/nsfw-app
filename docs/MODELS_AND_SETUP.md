@@ -17,7 +17,7 @@ If still OOM, add `--cpu-vae` or reduce resolution/frames.
 
 ## 2. Image Generation (already present)
 
-Existing workflows in `generated-workflows/`:
+Existing workflows in `local-comfyui/workflows/`:
 
 | Workflow | Base Model | Notes |
 |----------|------------|-------|
@@ -124,7 +124,7 @@ ComfyUI/
 2. One enhanced image workflow with better negative / quality presets
 3. Simple shell script to launch ComfyUI with optimal flags for M3 18GB
 
-Tell me which video option you want me to prioritize first (AnimateDiff or LTX), and I will drop the corresponding workflow JSONs into `generated-workflows/video/`.
+Tell me which video option you want me to prioritize first (AnimateDiff or LTX), and I will drop the corresponding workflow JSONs into `local-comfyui/workflows/video/`.
 
 
 ---
@@ -144,14 +144,14 @@ chmod +x start_comfyui_m3.sh
 It automatically uses the recommended flags for 18GB.
 
 ### Enhanced Image Workflow
-`generated-workflows/pony_nsfw_enhanced_t2i.json`
+`local-comfyui/workflows/pony_nsfw_enhanced_t2i.json`
 
 - Cleaner positive / negative prompts
 - Slightly lower CFG (6.5) and steps (25) for better speed/quality balance on M3
 - Same 832×1216 vertical format
 
 ### Video Workflows
-Already in `generated-workflows/video/`:
+Already in `local-comfyui/workflows/video/`:
 - `animatediff_t2v_nsfw_starter.json` (Text-to-Video)
 - `animatediff_i2v_nsfw_starter.json` (Image-to-Video)
 
@@ -176,4 +176,3 @@ Already in `generated-workflows/video/`:
 - Close browser tabs / other apps
 - Prefer SD1.5 based models for AnimateDiff over SDXL
 - Add `--cpu-vae` if VAE decode is the bottleneck
-
