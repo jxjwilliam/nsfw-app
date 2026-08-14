@@ -7,8 +7,10 @@ Single-user Next.js 15 app: prompt → **plan** (pick backend + cost) → **conf
   (SamsungT7 symlink).
 - **Remote (Vercel)** — Vercel + RunningHub + Cloudflare R2 (`RH_API_KEY`,
   `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
-  `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`); only the media file is uploaded to
-  R2 (`media-<jobId>.png`, flat key). Runbook: `docs/vercel-runninghub-deploy.md`.
+  `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, plus Vercel KV
+  `KV_REST_API_URL` / `KV_REST_API_TOKEN` for durable plan/job state); only the
+  media file is uploaded to R2 (`media-<jobId>.png`, flat key). Runbook:
+  `docs/vercel-runninghub-deploy.md`.
 
 ## Commands
 
@@ -48,6 +50,10 @@ Vercel.
   image; `/api/image` falls back to R2 after a cold start. Keys:
   `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
   `R2_BUCKET_NAME` (default `nfsw`), optional `R2_ENDPOINT` / `R2_ENABLED`.
+- `src/lib/kv.ts` — minimal Upstash REST KV client (plain fetch, no SDK).
+  Mirrors plan (`plan:<id>`, 5 min TTL) and job (`job:<id>`, 1 h TTL, job +
+  metadata together) records so Vercel status polls survive instance switches;
+  no-ops locally when `KV_REST_API_URL` / `KV_REST_API_TOKEN` are absent.
 
 ## Workflows & scripts
 
@@ -60,7 +66,8 @@ Vercel.
 - Semantic lowercase commit messages (`fix:`, `feat:`, `docs:`, `chore:`, `cleanup:`) — established in history.
 - R2 (remote mode) stores only the generated media file — no metadata, no
   directories. Local `outputs/` keeps the full record; remote history is
-  per-instance only because Vercel `/tmp` is ephemeral.
+  per-instance only because Vercel `/tmp` is ephemeral; plan/job records are
+  durable via Vercel KV when configured.
 - Standard-mode prompts go through G-2 review; explicit prompts return error `1501`. Workflow and local modes bypass it.
 - RunningHub workflow errors: `810` = workflow not saved/run yet, `801` = invalid workflow ID (see README for fixes).
 - New AI-generated docs under `docs/superpowers/` use a `oc_` date prefix (`oc_YYYY-MM-DD-<name>.md`); user-authored docs (`docs/`, `local-comfyui/workflows/`, `screenshots/`) keep their names.

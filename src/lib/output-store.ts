@@ -68,6 +68,7 @@ export async function finalizeSuccess(
   imageUrl: string,
   usage?: Record<string, unknown> | null
 ): Promise<void> {
+  await mkdir(dir, { recursive: true })
   const buf = await downloadImage(imageUrl)
   await writeFile(path.join(dir, 'image.png'), buf)
   meta.status = 'SUCCESS'
@@ -100,6 +101,7 @@ export async function finalizeFailed(
   meta: RunMetadata,
   errorMessage: string
 ): Promise<void> {
+  await mkdir(dir, { recursive: true })
   meta.status = 'FAILED'
   meta.errorMessage = errorMessage
   await writeFile(path.join(dir, 'metadata.json'), JSON.stringify(meta, null, 2))

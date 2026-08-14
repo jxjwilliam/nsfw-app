@@ -3,18 +3,37 @@ import path from 'path'
 
 import { findRunByJobId } from './output-store'
 import type { JobRecord, PlanSnapshot, RunMetadata } from './types'
+import { isKvEnabled, kvGet, kvSet } from './kv'
+
+const JOB_KV_TTL_SECONDS = 60 * 60
 
 export type HydratedPollState = JobRecord & { pollCount: number }
 
 const jobs = new Map<string, HydratedPollState>()
 const metaCache = new Map<string, RunMetadata>()
 
-export function setJob(job: JobRecord): void {
+function kvJobKey(jobId: string): string {
+  return `job:${jobId}`
+}
+
+/** Fire-and-forget mirror to KV so any serverless instance can resume a job. */
+function persistJobState(jobId: string): void {
+  if (!isKvEnabled()) return
+  const job = jobs.get(jobId)
+  if (!job) return
+  const meta = metaCache.get(jobId)
+  void kvSet(kvJobKey(jobId), { job, meta }, JOB_KV_TTL_SECONDS).catch((e) =>
+    console.error('KV job persist failed', e)
+  )
+}
+
+export function setJob(job: JobRecord & { pollCount?: number }): void {
   const prev = jobs.get(job.jobId)
   jobs.set(job.jobId, {
-    pollCount: prev?.pollCount ?? 0,
+    pollCount: job.pollCount ?? prev?.pollCount ?? 0,
     ...job,
   })
+  persistJobState(job.jobId)
 }
 
 export function getJob(jobId: string): HydratedPollState | undefined {
@@ -26,6 +45,22 @@ export function getJob(jobId: string): HydratedPollState | undefined {
  */
 export async function ensureJobHydrated(jobId: string): Promise<boolean> {
   if (jobs.has(jobId)) return true
+
+  if (isKvEnabled()) {
+    try {
+      const state = await kvGet<{
+        job?: JobRecord
+        meta?: RunMetadata
+      }>(kvJobKey(jobId))
+      if (state?.job) {
+        setJob({ pollCount: 0, ...state.job })
+        if (state.meta) setMeta(jobId, state.meta)
+        return true
+      }
+    } catch (e) {
+      console.error('KV job hydrate failed', e)
+    }
+  }
 
   const found = await findRunByJobId(jobId)
   if (!found) return false
@@ -63,6 +98,7 @@ export async function ensureJobHydrated(jobId: string): Promise<boolean> {
 
 export function setMeta(jobId: string, meta: RunMetadata): void {
   metaCache.set(jobId, meta)
+  persistJobState(jobId)
 }
 
 export function getMeta(jobId: string): RunMetadata | undefined {

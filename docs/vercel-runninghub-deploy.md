@@ -37,6 +37,8 @@ Preview, and Development). `.env.local` is never used on Vercel.
 | `R2_BUCKET_NAME` | No | R2 bucket name, defaults to `nfsw`. |
 | `R2_ENDPOINT` | No | Optional custom S3-compatible endpoint; defaults to `https://<account-id>.r2.cloudflarestorage.com`. |
 | `R2_ENABLED` | No | Set `true` only to enable R2 outside Vercel (local testing). On Vercel, R2 is enabled automatically once credentials are present. |
+| `KV_REST_API_URL` | Recommended | From the KV store's "Connect Project" env vars (see Vercel KV section). |
+| `KV_REST_API_TOKEN` | Recommended | From the same place. |
 
 Do **not** set `BACKEND=local` or `LOCAL_COMFY_URL` — there is no local ComfyUI
 behind Vercel, and local mode will fail with `LocalComfy:` errors. `PORT` is
@@ -90,6 +92,30 @@ R2 only activates on Vercel (`VERCEL=1`) or when you explicitly set
 `R2_ENABLED=true`. Local ComfyUI on port 4000 is completely unaffected — it
 keeps writing to `outputs/` exactly as before.
 
+## Vercel KV (recommended)
+
+Without durable state, `/api/status` can return **404 "job not found"**:
+Vercel routes each request to any serverless instance, and the job record
+lives only in that instance's memory and `/tmp`. Vercel KV fixes this by
+storing plan and job records (with TTLs) so any instance can resume a poll —
+including the Plan → Confirm hop.
+
+Setup:
+
+1. In the Vercel dashboard, open the project → **Storage** → **Create
+   Database** → choose **KV**.
+2. Name it (e.g. `nsfw-app-kv`), pick a region (default is fine), and create
+   it.
+3. On the store page, Vercel generates `KV_REST_API_URL` and
+   `KV_REST_API_TOKEN` (plus `KV_URL`, only needed by the SDK). Click
+   **Connect Project**, select this project and the environments you want —
+   Vercel adds the two vars automatically. Or copy them into Project Settings
+   → Environment Variables manually (values without quotes).
+4. Redeploy Production so the env vars take effect.
+
+The app uses KV automatically when those vars are present; without them it
+falls back to the old per-instance behavior (fine locally, flaky on Vercel).
+
 ## Deploy steps
 
 1. Import the repo in Vercel (Framework Preset: **Next.js**; Build Command:
@@ -111,11 +137,11 @@ keeps writing to `outputs/` exactly as before.
   shows images/videos only. After a cold start wipes `/tmp`, `/api/image`
   still serves the file from R2 (the key is derived from `jobId`), but
   `/api/history` only shows runs from the current instance and can be empty
-  after a cold start — the run record was never stored in R2. Still ephemeral:
-  plan snapshots (a cold start between Plan and Confirm loses the plan →
-  regenerate) and in-flight RUNNING jobs. If the R2 upload fails, the run
-  still finishes locally and `persistError` is recorded in local metadata
-  rather than failing the job.
+  after a cold start — the run record was never stored in R2. With Vercel KV
+  configured, plan snapshots and in-flight RUNNING jobs are durable across
+  instances; without it they are per-instance (`/tmp`). If the R2 upload
+  fails, the run still finishes locally and `persistError` is recorded in
+  local metadata rather than failing the job.
 - **`/api/reveal` is macOS-only** (opens Finder) and returns 501 on Vercel —
   expected, not a deployment failure.
 - **Content safety.** ComfyUI workflow mode bypasses G-2; Standard Model mode

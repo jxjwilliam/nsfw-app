@@ -5,7 +5,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 | Mode | Stack | Key env vars | Output |
 |------|-------|--------------|--------|
 | **Local** | ComfyUI + web UI + checkpoints + local workflows (Mac) | `BACKEND=local`, `LOCAL_COMFY_URL`, `LOCAL_CKPT_<STYLE>` | `outputs/` (SamsungT7 symlink), full records |
-| **Remote** | Vercel + RunningHub + Cloudflare R2 | `RH_API_KEY`, `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | R2 bucket `nfsw`, **media file only** (`media-<jobId>.png`) |
+| **Remote** | Vercel + RunningHub + Cloudflare R2 | `RH_API_KEY`, `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `KV_REST_API_URL`, `KV_REST_API_TOKEN` (recommended) | R2 bucket `nfsw`, **media file only** (`media-<jobId>.png`) |
 
 - **Local:** `npm run dev` on port 4000, generation via your local ComfyUI at
   `LOCAL_COMFY_URL`, using your checkpoints and `local-comfyui/workflows/`.
