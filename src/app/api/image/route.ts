@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 
 import { ensureJobHydrated, getJob } from '@/lib/jobs'
 import { findRunByJobId } from '@/lib/output-store'
+import { fetchR2Image, isR2Enabled } from '@/lib/r2'
 
 export async function GET(req: Request) {
   const jobId = new URL(req.url).searchParams.get('jobId')
@@ -24,6 +25,14 @@ export async function GET(req: Request) {
   }
 
   if (!dir) {
+    if (isR2Enabled()) {
+      const r2Buf = await fetchR2Image(jobId)
+      if (r2Buf) {
+        return new NextResponse(new Uint8Array(r2Buf), {
+          headers: { 'Content-Type': 'image/png' },
+        })
+      }
+    }
     return new NextResponse('Not found', { status: 404 })
   }
 
@@ -39,6 +48,14 @@ export async function GET(req: Request) {
       headers: { 'Content-Type': 'image/png' },
     })
   } catch {
+    if (isR2Enabled()) {
+      const r2Buf = await fetchR2Image(jobId)
+      if (r2Buf) {
+        return new NextResponse(new Uint8Array(r2Buf), {
+          headers: { 'Content-Type': 'image/png' },
+        })
+      }
+    }
     return new NextResponse('Not found', { status: 404 })
   }
 }

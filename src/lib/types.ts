@@ -84,4 +84,6 @@ export type RunMetadata = {
   imageFile?: string
   errorMessage?: string
   actualUsage?: Record<string, unknown>
+  /** Set when the image was generated but the R2 mirror upload failed. */
+  persistError?: string
 }

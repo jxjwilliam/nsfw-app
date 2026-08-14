@@ -3,6 +3,7 @@ import type { Dirent } from 'fs'
 import path from 'path'
 import type { PlanSnapshot, RunMetadata } from './types'
 import { downloadImage } from './runninghub'
+import { isR2Enabled, uploadR2Image } from './r2'
 
 const OUTPUTS_BASE =
   process.env.VERCEL === '1' ? '/tmp' : process.cwd().replace(/\/$/, '')
@@ -73,6 +74,25 @@ export async function finalizeSuccess(
   meta.imageFile = 'image.png'
   meta.actualUsage = usage ?? undefined
   await writeFile(path.join(dir, 'metadata.json'), JSON.stringify(meta, null, 2))
+
+  // Cloud (Vercel) only: mirror the image to R2 so the run survives a cold
+  // start wiping /tmp. Local dev never reaches this branch.
+  if (isR2Enabled()) {
+    let persistError: string | undefined
+    try {
+      await uploadR2Image(meta.jobId, buf)
+    } catch (e) {
+      persistError = e instanceof Error ? e.message : String(e)
+    }
+    if (persistError) {
+      meta.persistError = persistError
+      // Keep the locally visible record in sync even when the mirror failed.
+      await writeFile(
+        path.join(dir, 'metadata.json'),
+        JSON.stringify(meta, null, 2)
+      )
+    }
+  }
 }
 
 export async function finalizeFailed(
