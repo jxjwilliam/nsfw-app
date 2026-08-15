@@ -110,6 +110,8 @@ export async function finalizeSuccess(
       persistError = e instanceof Error ? e.message : String(e)
     }
     if (persistError) {
+      // Searchable in Vercel Observability as "R2 upload failed ...".
+      console.error('R2 upload failed for job', meta.jobId, persistError)
       meta.persistError = persistError
       // Keep the locally visible record in sync even when the mirror failed.
       await writeFile(

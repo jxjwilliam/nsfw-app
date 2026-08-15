@@ -7,6 +7,13 @@ vi.mock('./runninghub', () => ({
   downloadImage: vi.fn(async () => Buffer.from('file-bytes')),
 }))
 
+vi.mock('./r2', () => ({
+  isR2Enabled: vi.fn(() => true),
+  uploadR2Image: vi.fn(async () => {
+    throw new Error('R2 upload failed (HTTP 411)')
+  }),
+}))
+
 import {
   initJobDir,
   listHistory,
@@ -158,5 +165,26 @@ describe('finalizeSuccess media file', () => {
     const written = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf-8')) as RunMetadata
     expect(written.imageFile).toBe('image.png')
     expect(written.videoFile).toBeUndefined()
+  })
+
+  it('records and logs persistError when the R2 mirror fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const dir = await initJobDir('job-img', makePlan('image'), 'task-11', root)
+      const meta = makeMeta('job-img', '2026-08-14T02:00:00.000Z')
+      await finalizeSuccess(dir, meta, 'http://localhost:8188/view?x=3')
+
+      const written = JSON.parse(
+        await readFile(path.join(dir, 'metadata.json'), 'utf-8')
+      ) as RunMetadata
+      expect(written.persistError).toContain('R2 upload failed (HTTP 411)')
+      expect(errorSpy).toHaveBeenCalledWith(
+        'R2 upload failed for job',
+        'job-img',
+        'R2 upload failed (HTTP 411)'
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })

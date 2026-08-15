@@ -126,6 +126,7 @@ export function signR2Request(
     'x-amz-date': amzDateValue,
   }
   if (opts.contentType) headers['content-type'] = opts.contentType
+  if (opts.body) headers['content-length'] = String(opts.body.length)
 
   const canonical = buildCanonicalRequest({
     method: opts.method,
@@ -215,12 +216,13 @@ function r2ObjectPath(key: string): string {
 
 export async function uploadR2Image(
   jobId: string,
-  image: Buffer
+  image: Buffer,
+  objectKey = r2ImageKey(jobId)
 ): Promise<void> {
   if (!isR2Enabled()) throw new Error('R2 is not enabled')
   const res = await r2Fetch(
     'PUT',
-    r2ObjectPath(r2ImageKey(jobId)),
+    r2ObjectPath(objectKey),
     undefined,
     image,
     'image/png'
@@ -231,11 +233,14 @@ export async function uploadR2Image(
 }
 
 /** Returns the image buffer, or null when the object does not exist. */
-export async function fetchR2Image(jobId: string): Promise<Buffer | null> {
+export async function fetchR2Image(
+  jobId: string,
+  objectKey = r2ImageKey(jobId)
+): Promise<Buffer | null> {
   if (!isR2Enabled()) return null
   const res = await r2Fetch(
     'GET',
-    r2ObjectPath(r2ImageKey(jobId)),
+    r2ObjectPath(objectKey),
     undefined,
     undefined,
     undefined

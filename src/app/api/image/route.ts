@@ -34,6 +34,7 @@ export async function GET(req: Request) {
           headers: { 'Content-Type': 'image/png' },
         })
       }
+      console.error('R2 fallback miss for job', jobId)
     }
     return new NextResponse('Not found', { status: 404 })
   }
@@ -61,6 +62,7 @@ export async function GET(req: Request) {
           headers: { 'Content-Type': 'image/png' },
         })
       }
+      console.error('R2 fallback miss for job', jobId)
     }
     return new NextResponse('Not found', { status: 404 })
   }

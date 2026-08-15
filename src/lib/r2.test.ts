@@ -222,11 +222,12 @@ describe('SigV4 signing', () => {
       'PUT',
       '/nfsw/media-job-1.png',
       '',
-      'content-type:image/png\n' +
+      'content-length:8\n' +
+        'content-type:image/png\n' +
         'host:account.r2.cloudflarestorage.com\n' +
         'x-amz-content-sha256:' + sha256('png-data') + '\n' +
         'x-amz-date:20260814T000000Z\n',
-      'content-type;host;x-amz-content-sha256;x-amz-date',
+      'content-length;content-type;host;x-amz-content-sha256;x-amz-date',
       sha256('png-data'),
     ].join('\n')
     const stringToSign = [
@@ -246,7 +247,8 @@ describe('SigV4 signing', () => {
       .digest('hex')
     expect(headers.authorization).toBe(
       'AWS4-HMAC-SHA256 Credential=AKID/20260814/auto/s3/aws4_request, ' +
-        'SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, ' +
+        'SignedHeaders=content-length;content-type;host;x-amz-content-sha256;' +
+        'x-amz-date, ' +
         `Signature=${expectedSignature}`
     )
   })
@@ -262,6 +264,7 @@ describe('R2 HTTP client (node:http mocked)', () => {
     expect(req.options.method).toBe('PUT')
     expect(req.options.path).toBe('/nfsw/media-job-1.png')
     expect(req.body.toString('utf8')).toBe('png-data')
+    expect(req.headers['content-length']).toBe('8')
     expect(req.headers['content-type']).toBe('image/png')
     expect(req.headers['x-amz-content-sha256']).toBe(sha256('png-data'))
     expect(req.headers['x-amz-date']).toBeTruthy()

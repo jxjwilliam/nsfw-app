@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       mediaType: meta?.mediaType ?? 'image',
       outputPath: job.outputDir,
       usage: meta?.actualUsage,
+      persistError: meta?.persistError,
     })
   }
 
@@ -121,6 +122,7 @@ export async function GET(req: Request) {
           imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
           mediaType: mFinal.mediaType ?? 'image',
           outputPath: job.outputDir,
+          persistError: mFinal.persistError,
         })
       }
 
@@ -160,6 +162,7 @@ export async function GET(req: Request) {
           imageUrl: `/api/image?jobId=${encodeURIComponent(jobId)}`,
           mediaType: mFinal.mediaType ?? 'image',
           outputPath: job.outputDir,
+          persistError: mFinal.persistError,
         })
       }
 
@@ -199,6 +202,7 @@ export async function GET(req: Request) {
         mediaType: mFinal.mediaType ?? 'image',
         outputPath: job.outputDir,
         usage: q.usage ?? undefined,
+        persistError: mFinal.persistError,
       })
     }
 
