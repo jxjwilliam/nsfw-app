@@ -36,6 +36,33 @@ export function setJob(job: JobRecord & { pollCount?: number }): void {
   persistJobState(job.jobId)
 }
 
+/**
+ * Set the job record and its metadata together, then persist once.
+ *
+ * Use this at job creation time (instead of calling setJob() followed by
+ * setMeta()) whenever both are known at once. setJob() and setMeta() each
+ * fire their own independent, unawaited KV write to the SAME key — if two
+ * separate writes are in flight for a brand-new job, whichever one lands
+ * last on the KV server wins, and the earlier setJob() call always writes
+ * `meta: undefined` (since metaCache hasn't been populated yet at that
+ * point). That race intermittently overwrites a good record with one
+ * missing metadata, which later poll-time code reports as
+ * "metadata missing" (500). Writing both fields before the single
+ * persistJobState() call removes the race entirely.
+ */
+export function setJobAndMeta(
+  job: JobRecord & { pollCount?: number },
+  meta: RunMetadata
+): void {
+  const prev = jobs.get(job.jobId)
+  jobs.set(job.jobId, {
+    pollCount: job.pollCount ?? prev?.pollCount ?? 0,
+    ...job,
+  })
+  metaCache.set(job.jobId, meta)
+  persistJobState(job.jobId)
+}
+
 export function getJob(jobId: string): HydratedPollState | undefined {
   return jobs.get(jobId)
 }
@@ -82,16 +109,18 @@ export async function ensureJobHydrated(jobId: string): Promise<boolean> {
         ? 'FAILED'
         : 'RUNNING'
 
-  setJob({
-    jobId,
-    planId,
-    taskId: metaRest.taskId,
-    status: jobStatus,
-    createdAt: metaRest.createdAt,
-    outputDir,
-    errorMessage: metaRest.errorMessage,
-  })
-  setMeta(jobId, metaRest)
+  setJobAndMeta(
+    {
+      jobId,
+      planId,
+      taskId: metaRest.taskId,
+      status: jobStatus,
+      createdAt: metaRest.createdAt,
+      outputDir,
+      errorMessage: metaRest.errorMessage,
+    },
+    metaRest
+  )
 
   return true
 }

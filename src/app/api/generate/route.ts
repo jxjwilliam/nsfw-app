@@ -4,7 +4,7 @@ import path from 'path'
 
 import { NextResponse } from 'next/server'
 
-import { setJob, setMeta } from '@/lib/jobs'
+import { setJobAndMeta } from '@/lib/jobs'
 import { initJobDir } from '@/lib/output-store'
 import { loadPlan } from '@/lib/plans'
 import {
@@ -57,15 +57,21 @@ export async function POST(req: Request) {
     )
     const meta = JSON.parse(metaRaw) as RunMetadata
 
-    setJob({
-      jobId,
-      planId: plan.planId,
-      taskId,
-      status: 'RUNNING',
-      createdAt: new Date().toISOString(),
-      outputDir,
-    })
-    setMeta(jobId, meta)
+    // Set the job record and its metadata together in one call so the
+    // KV mirror is written once, atomically — see setJobAndMeta() in
+    // jobs.ts for why calling setJob()+setMeta() separately here used
+    // to race and could silently drop meta.
+    setJobAndMeta(
+      {
+        jobId,
+        planId: plan.planId,
+        taskId,
+        status: 'RUNNING',
+        createdAt: new Date().toISOString(),
+        outputDir,
+      },
+      meta
+    )
 
     return NextResponse.json({
       jobId,
