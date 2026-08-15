@@ -80,32 +80,32 @@ describe('output-store on symlinked exFAT outputs', () => {
 })
 
 describe('initJobDir media routing', () => {
-  it('routes image jobs to nsfw/images/<jobId>', async () => {
+  it('routes image jobs to images/<jobId>', async () => {
     const dir = await initJobDir('job-img', makePlan('image'), 'task-1', root)
-    expect(dir).toBe(path.join(root, 'nsfw', 'images', 'job-img'))
+    expect(dir).toBe(path.join(root, 'images', 'job-img'))
     const meta = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf-8')) as RunMetadata
     expect(meta.mediaType).toBe('image')
   })
 
-  it('routes video jobs to nsfw/video/<jobId>', async () => {
+  it('routes video jobs to video/<jobId>', async () => {
     const dir = await initJobDir('job-vid', makePlan('video'), 'task-2', root)
-    expect(dir).toBe(path.join(root, 'nsfw', 'video', 'job-vid'))
+    expect(dir).toBe(path.join(root, 'video', 'job-vid'))
     const meta = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf-8')) as RunMetadata
     expect(meta.mediaType).toBe('video')
   })
 
   it('defaults to images when plan has no mediaType', async () => {
     const dir = await initJobDir('job-old', makePlan(undefined), 'task-3', root)
-    expect(dir).toBe(path.join(root, 'nsfw', 'images', 'job-old'))
+    expect(dir).toBe(path.join(root, 'images', 'job-old'))
   })
 })
 
 describe('listHistory layout', () => {
   it('merges media dirs and legacy day dirs, newest first, skipping raw and dotfiles', async () => {
-    const vidDir = path.join(root, 'nsfw', 'video', 'job-vid')
-    const imgDir = path.join(root, 'nsfw', 'images', 'job-img')
+    const vidDir = path.join(root, 'video', 'job-vid')
+    const imgDir = path.join(root, 'images', 'job-img')
     const legacyDir = path.join(root, '2026-08-01', 'job-legacy')
-    const rawDir = path.join(root, 'nsfw', 'images', 'raw')
+    const rawDir = path.join(root, 'images', 'raw')
     await mkdir(vidDir, { recursive: true })
     await mkdir(imgDir, { recursive: true })
     await mkdir(legacyDir, { recursive: true })
@@ -126,7 +126,7 @@ describe('listHistory layout', () => {
 
 describe('findRunDirByJobId', () => {
   it('finds jobs in video dir and legacy day dirs', async () => {
-    const vidDir = path.join(root, 'nsfw', 'video', 'job-vid')
+    const vidDir = path.join(root, 'video', 'job-vid')
     const legacyDir = path.join(root, '2026-08-01', 'job-legacy')
     await mkdir(vidDir, { recursive: true })
     await mkdir(legacyDir, { recursive: true })

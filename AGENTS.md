@@ -4,7 +4,7 @@ Single-user Next.js 15 app: prompt → **plan** (pick backend + cost) → **conf
 
 - **Local** — ComfyUI + web UI + checkpoints + local workflows (`BACKEND=local`,
   `LOCAL_COMFY_URL`, `LOCAL_CKPT_<STYLE>`); artifacts under `outputs/`
-  (SamsungT7 symlink).
+  (symlink → SamsungT7 `.../comfy.git/app/output/nsfw`).
 - **Remote (Vercel)** — Vercel + RunningHub + Cloudflare R2 (`RH_API_KEY`,
   `RH_WORKFLOW_ID`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
   `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, plus Vercel KV
@@ -39,8 +39,8 @@ Vercel.
 ## Architecture
 
 - Thin route handlers in `src/app/api/{plan,generate,status,image,history,reveal,workflow-setup}/route.ts`; all logic in `src/lib/*.ts`. Put new logic there with colocated vitest tests (env save/restore in `beforeEach`/`afterEach`, see `router.test.ts`).
-- Lifecycle: `/api/plan` saves `.plans/<planId>.json` (5 min TTL) → `/api/generate` creates `outputs/nsfw/images/<jobId>/` (or `outputs/nsfw/video/<jobId>/` for `mediaType: 'video'`) → `/api/status` polls the backend and finalizes `image.png` (or `video.mp4`).
-- `outputs/` is a **symlink to ComfyUI's output dir on the SamsungT7 exFAT drive**. Jobs live under `nsfw/images/<jobId>/` and `nsfw/video/<jobId>/`; ComfyUI's raw save files are redirected to `nsfw/images/raw/` and `nsfw/video/raw/` via `filename_prefix`. Legacy `outputs/YYYY-MM-DD/<jobId>/` dirs are still read by history. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same.
+- Lifecycle: `/api/plan` saves `.plans/<planId>.json` (5 min TTL) → `/api/generate` creates `outputs/images/<jobId>/` (or `outputs/video/<jobId>/` for `mediaType: 'video'`) → `/api/status` polls the backend and finalizes `image.png` (or `video.mp4`).
+- `outputs/` is a **symlink to ComfyUI's `output/nsfw` dir on the SamsungT7 exFAT drive**. Jobs live under `images/<jobId>/` and `video/<jobId>/`; ComfyUI's raw save files are redirected to `images/raw/` and `video/raw/` via `filename_prefix` (the ComfyUI-side `nsfw/…` prefix resolves into the same folder). Legacy `outputs/YYYY-MM-DD/<jobId>/` dirs inside that root are still read by history. `output-store.ts` skips macOS `._*` AppleDouble files — new code reading outputs must do the same.
 - Video mode (`mediaType: 'video'` in the UI): local-only (`BACKEND=local` required, else `/api/plan` → 400). AnimateDiff + SD1.5 (`realisticVisionV51` + `mm_sd_v15_v2`, overridable via `LOCAL_VIDEO_CKPT` / `LOCAL_VIDEO_MOTION`), 16/24/32 frames and 16/20/24 steps by tier, 512×512 / 512×768 / 768×512 by aspect, mp4 via `VHS_VideoCombine`. Status polling allows 180 polls (~24 min) for video vs 60 for images.
 - `local-comfyui/checkpoints/` is a symlink to a multi-GB model dir. **Never let Tailwind scan it**: `src/app/globals.css` must keep `@import "tailwindcss" source(none);` + `@source "../**/*.{ts,tsx,mdx}";`. A plain `@import "tailwindcss"` makes `next build` scan the symlink and hang at ~32GB memory.
 - Backend dispatch happens in `createPlan()` (`src/lib/router.ts`): `BACKEND=local` → `createLocalPlan`, else comfy-workflow or standard router.

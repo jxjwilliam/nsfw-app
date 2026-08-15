@@ -46,7 +46,7 @@ Single-user Next.js app: enter a prompt, **plan** a generation path (model or Co
 2. **Plan** — server picks a route, shows label, estimated price (Standard mode), reason, and up to two alternatives.
 3. **Confirm** — server submits a RunningHub task and returns a `jobId`.
 4. **Poll** — UI calls `/api/status` every ~8s until `SUCCESS` or `FAILED` (max ~6 minutes).
-5. **View** — image (or video) served from `/api/image?jobId=...`; locally the full run is written under `outputs/nsfw/images/<jobId>/` (or `outputs/nsfw/video/<jobId>/`), on Vercel only the media file is mirrored to R2.
+5. **View** — image (or video) served from `/api/image?jobId=...`; locally the full run is written under `outputs/images/<jobId>/` (or `outputs/video/<jobId>/`), on Vercel only the media file is mirrored to R2.
 
 No login, no payment UI — only your RunningHub account balance is charged when you confirm.
 
@@ -134,7 +134,7 @@ runninghub-app/
 │   ├── checkpoints/        # symlink to your model dir (do not scan)
 │   └── workflows/          # script-generated workflows (scripts/generate-nsfw-workflows.js) + video/
 ├── .plans/<planId>.json    # gitignored; plan TTL ~5 min
-└── outputs/nsfw/
+└── outputs/                       # symlink → ComfyUI output/nsfw (SamsungT7)
     ├── images/<jobId>/{metadata.json, plan.json, image.png}   # image jobs
     ├── video/<jobId>/{metadata.json, plan.json, video.mp4}    # video jobs
     └── {images,video}/raw/                                    # ComfyUI raw save files

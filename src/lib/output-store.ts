@@ -41,7 +41,7 @@ export function outputDirForJob(
   mediaType: MediaType = 'image',
   root = outputsRoot()
 ): string {
-  return path.join(root, 'nsfw', mediaSubdir(mediaType), jobId)
+  return path.join(root, mediaSubdir(mediaType), jobId)
 }
 
 export async function initJobDir(
@@ -160,8 +160,8 @@ export async function listHistory(
   root = outputsRoot()
 ): Promise<Array<RunMetadata & { outputDir: string }>> {
   const entries: Array<RunMetadata & { outputDir: string }> = []
-  entries.push(...(await scanParent(path.join(root, 'nsfw', 'images'))))
-  entries.push(...(await scanParent(path.join(root, 'nsfw', 'video'))))
+  entries.push(...(await scanParent(path.join(root, 'images'))))
+  entries.push(...(await scanParent(path.join(root, 'video'))))
   try {
     const days = await listDayDirs(root)
     for (const day of days) {
@@ -181,8 +181,8 @@ export async function findRunDirByJobId(
   root = outputsRoot()
 ): Promise<string | null> {
   const mediaDirs = [
-    path.join(root, 'nsfw', 'images', jobId),
-    path.join(root, 'nsfw', 'video', jobId),
+    path.join(root, 'images', jobId),
+    path.join(root, 'video', jobId),
   ]
   for (const dir of mediaDirs) {
     try {
