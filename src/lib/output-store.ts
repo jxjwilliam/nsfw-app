@@ -83,6 +83,12 @@ export async function finalizeSuccess(
   const buf = await downloadImage(fileUrl)
   const isVideo = meta.mediaType === 'video'
   const file = isVideo ? 'video.mp4' : 'image.png'
+  // The poll that resolves SUCCESS can land on a different serverless
+  // instance than the one that ran initJobDir() — KV now restores the job
+  // record (see jobs.ts) across instances, but not the actual /tmp
+  // directory that instance never created. Recreate it before writing,
+  // the same way finalizeFailed() already does below.
+  await mkdir(dir, { recursive: true })
   await writeFile(path.join(dir, file), buf)
   meta.status = 'SUCCESS'
   if (isVideo) {
