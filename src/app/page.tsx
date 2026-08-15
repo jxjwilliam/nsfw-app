@@ -387,7 +387,15 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-[1200px] flex-col gap-8 px-4 py-8 sm:px-6 lg:py-12">
       <header className="flex flex-col gap-1 border-b border-[color:var(--border)] pb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--fg)]">
+        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-[color:var(--fg)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark, served as-is */}
+          <img
+            src="/logo.svg"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg"
+          />
           RunningHub Generator
         </h1>
         <p className="max-w-xl text-sm text-[color:var(--muted)]">
