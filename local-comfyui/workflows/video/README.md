@@ -7,7 +7,8 @@
 | `animatediff_t2v_nsfw_starter.json` | Text-to-Video | AnimateDiff + SD1.5 checkpoint (UI format) | ✅ Best starting point |
 | `animatediff_t2v_nsfw_starter.api.json` | Text-to-Video | Same workflow in **API format** — validated & working (SD1.5 + 16 frames) | ✅ |
 | `animatediff_i2v_nsfw_starter.json` | Image-to-Video | AnimateDiff img2vid (load image as first frame) | ✅ |
-| (next) `ltx_video_t2v_basic.json` | Text-to-Video | LTX-Video 2B distilled | ⚠️ Use low res + frames |
+| `ltx_t2v_nsfw_starter.api.json` | Text-to-Video | LTX-Video 2B (native nodes, VHS mp4) | ✅ New — higher quality, ~2s clips |
+| `ltx_i2v_nsfw_starter.api.json` | Image-to-Video | LTX-Video 2B first-frame control (`start_frame.png` in ComfyUI input) | ✅ New |
 
 ## Scripted generation (recommended)
 
@@ -29,6 +30,19 @@ All options: `--prompt --negative --ckpt --motion --frames --width --height
 --steps --cfg --fps --prefix --seed --out --timeout` (see the script header).
 `COMFYUI_URL` env overrides `http://localhost:8188`.
 
+### LTX-Video (higher quality, scripted)
+
+`scripts/generate-ltx-video.js` builds, submits, polls, and copies the finished
+mp4 to `/Users/william.jiang/Samsung/playground-2026/comfyui/outputs/videos/`:
+
+```bash
+node scripts/generate-ltx-video.js --prompt="a woman dancing in a bedroom, cinematic"
+node scripts/generate-ltx-video.js --mode=i2v --image=./frame.png
+```
+
+LTX settings for 18GB: 512x512–512x768, 33–65 frames (`frames ≡ 1 mod 8`),
+20–30 steps, CFG 3.0, sampler `res_multistep` (T2V) / `euler` (I2V), 24 fps.
+
 ## Prerequisites (all already installed)
 
 - Custom nodes: **ComfyUI-AnimateDiff-Evolved**, **ComfyUI-VideoHelperSuite**
@@ -37,6 +51,11 @@ All options: `--prompt --negative --ckpt --motion --frames --width --height
   Verified: `realisticVisionV51_v51VAE.safetensors` (Realistic Vision V5.1,
   downloaded from Civitai model 130072). RV V6 (`realisticVisionV60B1`) is
   **SDXL** — will fail validation.
+- **LTX-Video**: `ltx-video-2b-v0.9.5.safetensors` (diffusion_models),
+  `t5xxl_fp8_e4m3fn_scaled.safetensors` (CLIP, type `ltxv`), and
+  `models/vae/ltx-video-2b-v0.9.5-vae.safetensors` — the VAE extracted from
+  the checkpoint (VAELoader cannot read the combined file directly). All
+  present as of 2026-08-19.
 
 ## Gotchas (learned the hard way)
 
@@ -71,7 +90,6 @@ All options: `--prompt --negative --ckpt --motion --frames --width --height
 
 ## Next Possible Improvements
 
-- LTX-Video 2B workflow (higher quality, needs extra models + nodes)
 - More refined NSFW prompt presets / style packs
 - Simple local web UI that calls these workflows
 - Batch / longer video helpers

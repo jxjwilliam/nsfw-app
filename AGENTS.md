@@ -60,6 +60,18 @@ Vercel.
 
 - `runninghub/` — everything RunningHub: `models.json` (Standard Model catalog) + `workflows/` (hand-written static RunningHub templates, `sdxl-*.json`, 1024×1024, `runninghub-nsfw` prefix). Edit by hand.
 - `local-comfyui/` — everything local ComfyUI: `checkpoints/` symlink + `workflows/` (**script output; do not hand-edit**). `scripts/generate-nsfw-workflows.js` regenerates it (dated filenames, 832×1216, per-checkpoint NSFW prompts; it randomly picks DeepSeek / Kimi / Qwen from the configured keys — overridable with `DEEPSEEK_MODEL`, `KIMI_MODEL`, `QWEN_MODEL`). `scripts/run-workflows.js` submits these to local ComfyUI.
+- `scripts/generate-image-workflows.js` — offline alternative that writes
+  `local-comfyui/workflows/img_*.api.json` (14 checkpoints, curated prompts,
+  no LLM keys needed; `--list` / `--ckpt` / `--prompt` / `--seed`).
+- `scripts/generate-ltx-video.js` — LTX-Video 2B T2V/I2V one-shot generator
+  (native LTX nodes + VHS mp4; needs the extracted
+  `ltx-video-2b-v0.9.5-vae.safetensors` in models/vae). Copies the mp4 to
+  `~/Samsung/playground-2026/comfyui/outputs/videos/` by default.
+- `scripts/run-all-workflows.js` — batch runner: all API-format workflows
+  under `local-comfyui/workflows/`, sequential, outputs copied to
+  `~/Samsung/playground-2026/comfyui/outputs/{images,videos}`, optional
+  Telegram summary via `hermes send`. This is what the Hermes skill
+  `comfyui-nsfw` triggers from Telegram (`hermes/comfyui-nsfw/SKILL.md`).
 - `scripts/start_comfyui_m3.sh` — M3 Pro 18GB launcher; must run from the ComfyUI root (where `main.py` is).
 
 ## Conventions & gotchas
