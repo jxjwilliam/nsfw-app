@@ -1,0 +1,233 @@
+[
+  {
+    "slug": "iniverse",
+    "file": "iniverseMixSFWNSFW_realXLV1.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "pony",
+    "file": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors",
+    "arch": "sdxl",
+    "style": "pony",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 7.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "xxmix9",
+    "file": "xxmix9realisticsdxl_v10.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "juggernaut",
+    "file": "juggernautXL_ragnarokBy.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "realvisxl-lightning",
+    "file": "realvisxlV50_v50LightningBakedvae.safetensors",
+    "arch": "lightning",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 6,
+    "cfg": 3,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "4guofeng",
+    "file": "4Guofeng4XL_v12.safetensors",
+    "arch": "sdxl",
+    "style": "anime",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "animagine",
+    "file": "animagineXL40_v4Opt.safetensors",
+    "arch": "sdxl",
+    "style": "anime",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "ghostmix",
+    "file": "ghostmix_v20Bakedvae.safetensors",
+    "arch": "sd15",
+    "style": "illustration",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "majicmix",
+    "file": "majicmixRealistic_v7.safetensors",
+    "arch": "sd15",
+    "style": "realistic",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "dreamshaper",
+    "file": "dreamshaper_8.safetensors",
+    "arch": "sd15",
+    "style": "illustration",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "realistic-v51",
+    "file": "realisticVisionV51_v51VAE.safetensors",
+    "arch": "sd15",
+    "style": "realistic",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "realistic-v60",
+    "file": "realisticVisionV60B1_v60B1VAE.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "realistic-v60-hypervae",
+    "file": "realisticVisionV60B1_v51HyperVAE.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "sdxl-turbo",
+    "file": "SDXL-TURBO/sd_xl_turbo_1.0_fp16.safetensors",
+    "arch": "turbo",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 6,
+    "cfg": 2,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "epicrealism-xl",
+    "file": "epicrealismXL_pureFix.safetensors",
+    "arch": "sdxl",
+    "style": "realistic",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "epicrealism-naturalsin",
+    "file": "epicrealism_naturalSinRC1VAE.safetensors",
+    "arch": "sd15",
+    "style": "realistic",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "beautiful-realistic",
+    "file": "beautifulRealistic_v7.safetensors",
+    "arch": "sd15",
+    "style": "realistic",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "cyberrealistic",
+    "file": "cyberrealistic_final.safetensors",
+    "arch": "sd15",
+    "style": "realistic",
+    "resolution": "640x960",
+    "steps": 25,
+    "cfg": 7,
+    "lora": "add_detail.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "illustrious",
+    "file": "illustriousGehenna_v60.safetensors",
+    "arch": "sdxl",
+    "style": "anime",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "animij",
+    "file": "animij_v10.safetensors",
+    "arch": "sdxl",
+    "style": "anime",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 6.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  },
+  {
+    "slug": "ponyrealism",
+    "file": "ponyRealism_V22.safetensors",
+    "arch": "sdxl",
+    "style": "pony",
+    "resolution": "832x1216",
+    "steps": 28,
+    "cfg": 7.5,
+    "lora": "add-detail-xl.safetensors",
+    "seed": 20260830
+  }
+]

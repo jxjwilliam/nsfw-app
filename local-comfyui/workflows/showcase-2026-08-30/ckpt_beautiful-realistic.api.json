@@ -1,0 +1,135 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "10",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ],
+      "seed": 20260830,
+      "steps": 25,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1
+    },
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "beautifulRealistic_v7.safetensors"
+    },
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "width": 640,
+      "height": 960
+    },
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "masterpiece, best quality, photorealistic, RAW photo, beautiful 23 year old Asian woman, elegant seductive pose, naked, nude, bare breasts, porcelain skin, long black hair, soft studio light, detailed face, sharp focus, high detail",
+      "clip": [
+        "10",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "worst quality, low quality, blurry, deformed, bad anatomy, bad hands, extra fingers, missing fingers, extra limbs, fused fingers, censored, clothes, text, watermark, signature, username, artist name, ugly, duplicate, mutilated, out of frame, lowres, realistic, 3d, cartoon, loli, shota, child, minor, underage, teenager, teen, childface",
+      "clip": [
+        "10",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "CLIP Text Encode (Negative)"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "11",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "nsfw/showcase-2026-08-30/ckpt_beautiful-realistic",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "10": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ],
+      "lora_name": "add_detail.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0
+    },
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "vae-ft-mse-840000-ema-pruned.safetensors"
+    },
+    "_meta": {
+      "title": "Load VAE"
+    }
+  }
+}
